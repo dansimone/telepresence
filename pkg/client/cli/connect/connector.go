@@ -257,8 +257,8 @@ func launchConnectorDaemon(ctx context.Context, connectorDaemon string, required
 		if cr.UserDaemonProfilingPort > 0 {
 			args = append(args, "--pprof", strconv.Itoa(int(cr.UserDaemonProfilingPort)))
 		}
-		if cliInContainer && os.Getuid() == 0 {
-			// No use having multiple daemons when running as root in docker.
+		if proc.IsAdmin() {
+			// No use having multiple daemons when running as root.
 			hn, err := os.Hostname()
 			if err != nil {
 				hn = "unknown"
@@ -333,7 +333,7 @@ func newUserDaemon(ctx context.Context, conn *grpc.ClientConn, daemonID *daemon.
 
 func EnsureUserDaemon(ctx context.Context, required bool) (rc context.Context, err error) {
 	defer func() {
-		if err == nil && required && !daemon.GetUserClient(rc).Containerized() {
+		if err == nil && required && !(proc.IsAdmin() || daemon.GetUserClient(rc).Containerized()) {
 			// The RootDaemon must be started if the UserDaemon was started
 			err = ensureRootDaemonRunning(ctx)
 		}
