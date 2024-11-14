@@ -33,6 +33,15 @@ docDescription: >-
   environments, access to instantaneous feedback loops, and highly
   customizable development environments.
 items:
+  - version: 2.20.3
+    date: TBD
+    notes:
+      - type: bugfix
+        title: Ensure that Telepresence works with GitHub Codespaces
+        body: >-
+          GitHub Codespaces runs in a container, but not as root. Telepresence didn't handle this situation
+          correctly and only started the user daemon. The root daemon was never started.
+        docs: https://github.com/telepresenceio/telepresence/issues/3722
   - version: 2.20.2
     date: 2024-10-21
     notes:
