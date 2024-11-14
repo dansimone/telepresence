@@ -75,6 +75,8 @@ type pluginInfo struct {
 
 const pluginInfoMaxAge = 24 * time.Hour
 
+var zeroVersion = semver.Version{} //nolint:gochecknoglobals // constant
+
 func latestPluginVersion(ctx context.Context, pluginName string) (ver semver.Version, err error) {
 	file := "volume-plugin-info.json"
 	pi := pluginInfo{}
@@ -88,7 +90,7 @@ func latestPluginVersion(ctx context.Context, pluginName string) (ver semver.Ver
 	now := time.Now().UnixNano()
 	if time.Duration(now-pi.LastCheck) > pluginInfoMaxAge {
 		ver, err = getLatestPluginVersion(ctx, pluginName)
-		if err == nil {
+		if err == nil && !ver.EQ(zeroVersion) {
 			pi.LatestVersion = ver.String()
 			pi.LastCheck = now
 			err = cache.SaveToUserCache(ctx, &pi, file, cache.Public)
@@ -115,6 +117,9 @@ func getLatestPluginVersion(ctx context.Context, pluginName string) (ver semver.
 		tag := cfg.Tag
 		if tag == "" {
 			tag = "0.1.5"
+		}
+		if tag == "debug" {
+			return zeroVersion, nil
 		}
 		return semver.Parse(tag)
 	}
