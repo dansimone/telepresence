@@ -1132,6 +1132,8 @@ func (s *Session) activateProxyViaWorkloads(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse configuration value cluster.virtualIPSubnet: %w", err)
 	}
+	dlog.Debugf(ctx, "ProxyVIA using subnet %s", vipSubnet)
+
 	s.vipGenerator = vip.NewGenerator(vipSubnet)
 	s.localTranslationSubnets = make([]agentSubnet, sl)
 	for _, wlName := range s.consolidateProxyViaWorkloads(ctx) {
