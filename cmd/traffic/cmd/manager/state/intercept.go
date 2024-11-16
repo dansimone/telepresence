@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -77,7 +78,7 @@ func (s *state) PrepareIntercept(
 		return interceptError(err)
 	}
 
-	ac, err := s.ensureAgent(ctx, wl, s.isExtended(spec), spec)
+	ac, _, err := s.ensureAgent(ctx, wl, s.isExtended(spec), spec)
 	if err != nil {
 		return interceptError(err)
 	}
@@ -99,55 +100,76 @@ func (s *state) PrepareIntercept(
 	}, nil
 }
 
-func (s *state) EnsureAgent(ctx context.Context, n, ns string) error {
+func (s *state) EnsureAgent(ctx context.Context, n, ns string) ([]*managerrpc.AgentInfo, error) {
 	wl, err := agentmap.GetWorkload(ctx, n, ns, "")
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			err = errcat.User.New(err)
 		}
-		return err
+		return nil, err
 	}
-	_, err = s.ensureAgent(ctx, wl, false, nil)
-	return err
+	_, as, err := s.ensureAgent(ctx, wl, false, nil)
+	return as, err
 }
 
 func (s *state) ValidateCreateAgent(context.Context, k8sapi.Workload, agentconfig.SidecarExt) error {
 	return nil
 }
 
-func (s *state) ensureAgent(parentCtx context.Context, wl k8sapi.Workload, extended bool, spec *managerrpc.InterceptSpec) (ac *agentconfig.Sidecar, err error) {
+// sortAgents will sort the given AgentInfo based on pod name.
+func sortAgents(as []*managerrpc.AgentInfo) {
+	sort.Slice(as, func(i, j int) bool {
+		return as[i].PodName < as[j].PodName
+	})
+}
+
+func (s *state) ensureAgent(parentCtx context.Context, wl k8sapi.Workload, extended bool, spec *managerrpc.InterceptSpec) (
+	ac *agentconfig.Sidecar, as []*managerrpc.AgentInfo, err error,
+) {
 	if !managerutil.AgentInjectorEnabled(parentCtx) {
 		sce, err := mutator.GetMap(parentCtx).Get(parentCtx, wl.GetName(), wl.GetNamespace())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if sce == nil {
-			return nil, errcat.User.Newf("agent-injector is disabled and no agent has been added manually for %s.%s", wl.GetName(), wl.GetNamespace())
+		if sce != nil {
+			ac = sce.AgentConfig()
+			am := s.agents.LoadAllMatching(func(_ string, ai *managerrpc.AgentInfo) bool {
+				return ai.Name == ac.AgentName && ai.Namespace == ac.Namespace
+			})
+			as = make([]*managerrpc.AgentInfo, len(am))
+			i := 0
+			for _, found := range am {
+				as[i] = found
+				i++
+			}
+			sortAgents(as)
+			return ac, as, nil
 		}
-		return sce.AgentConfig(), nil
+		return nil, nil, errcat.User.Newf("agent-injector is disabled and no agent has been added manually for %s.%s", wl.GetName(), wl.GetNamespace())
 	}
 	ctx, cancel := context.WithTimeout(parentCtx, managerutil.GetEnv(parentCtx).AgentArrivalTimeout)
 	defer cancel()
 
 	failedCreateCh, err := watchFailedInjectionEvents(ctx, wl.GetName(), wl.GetNamespace())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sce, err := s.getOrCreateAgentConfig(ctx, wl, extended, spec)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	ac = sce.AgentConfig()
-	if err = s.waitForAgent(ctx, ac.AgentName, ac.Namespace, failedCreateCh); err != nil {
+	if as, err = s.waitForAgents(ctx, ac.AgentName, ac.Namespace, failedCreateCh); err != nil {
 		// If no agent arrives, then drop its entry from the configmap. This ensures that there
 		// are no false positives the next time an intercept is attempted.
 		if dropErr := s.dropAgentConfig(parentCtx, wl); dropErr != nil {
 			dlog.Errorf(ctx, "failed to remove configmap entry for %s.%s: %v", wl.GetName(), wl.GetNamespace(), dropErr)
 		}
-		return nil, err
+		return nil, nil, err
 	}
-	return ac, nil
+	sortAgents(as)
+	return ac, as, nil
 }
 
 func (s *state) isExtended(spec *managerrpc.InterceptSpec) bool {
@@ -268,6 +290,27 @@ func (s *state) getOrCreateAgentConfig(
 			if sce, err = gc.Generate(ctx, wl, nil); err != nil {
 				return false, err
 			}
+
+			// If we don't have an entry for the workload in the config-map, then all current agents for that
+			// workload are invalid, and we'll have to wait for them to be removed.
+			filter := func(s string, info *managerrpc.AgentInfo) bool {
+				return info.Kind == wl.GetKind() && info.Name == wl.GetName() && info.Namespace == wl.GetNamespace()
+			}
+			if len(s.agents.LoadAllMatching(filter)) > 0 {
+				dlog.Debugf(ctx, "Waiting for deleted %s.%s agents to depart", wl.GetName(), wl.GetNamespace())
+				agCh := s.agents.SubscribeSubset(ctx, filter)
+				for {
+					select {
+					case <-ctx.Done():
+						return false, ctx.Err()
+					case as, ok := <-agCh:
+						if ok && len(as.State) > 0 {
+							continue
+						}
+					}
+					break
+				}
+			}
 			doUpdate = true
 		}
 
@@ -387,7 +430,7 @@ func watchFailedInjectionEvents(ctx context.Context, name, namespace string) (<-
 	return ec, nil
 }
 
-func (s *state) waitForAgent(ctx context.Context, name, namespace string, failedCreateCh <-chan *events.Event) error {
+func (s *state) waitForAgents(ctx context.Context, name, namespace string, failedCreateCh <-chan *events.Event) ([]*managerrpc.AgentInfo, error) {
 	dlog.Debugf(ctx, "Waiting for agent %s.%s", name, namespace)
 	snapshotCh := s.WatchAgents(ctx, func(sessionID string, agent *managerrpc.AgentInfo) bool {
 		return agent.Name == name && agent.Namespace == namespace
@@ -396,13 +439,13 @@ func (s *state) waitForAgent(ctx context.Context, name, namespace string, failed
 	mm := mutator.GetMap(ctx)
 
 	// fes collects events from the failedCreatedCh and is included in the error message in case
-	// the waitForAgent call times out.
+	// the waitForAgents call times out.
 	var fes []*events.Event
 	for {
 		select {
 		case fe, ok := <-failedCreateCh:
 			if !ok {
-				return errors.New("failed create channel closed")
+				return nil, errors.New("failed create channel closed")
 			}
 			msg := fe.Note
 			// Terminate directly on known fatal events. No need for the user to wait for a timeout
@@ -447,19 +490,27 @@ func (s *state) waitForAgent(ctx context.Context, name, namespace string, failed
 				fes = append(fes, fe)
 				continue
 			}
-			return errcat.User.New(msg)
+			return nil, errcat.User.New(msg)
 		case snapshot, ok := <-snapshotCh:
 			if !ok {
 				// The request has been canceled.
-				return status.Error(codes.Canceled, fmt.Sprintf("channel closed while waiting for agent %s.%s to arrive", name, namespace))
+				return nil, status.Error(codes.Canceled, fmt.Sprintf("channel closed while waiting for agent %s.%s to arrive", name, namespace))
 			}
+			if len(snapshot.State) == 0 {
+				continue
+			}
+			as := make([]*managerrpc.AgentInfo, 0, len(snapshot.State))
 			for _, a := range snapshot.State {
-				if !mm.IsBlacklisted(a.PodName, a.Namespace) {
+				if mm.IsBlacklisted(a.PodName, a.Namespace) {
+					dlog.Debugf(ctx, "Pod %s.%s is blacklisted", a.PodName, a.Namespace)
+				} else {
 					dlog.Debugf(ctx, "Agent %s.%s is ready", a.Name, a.Namespace)
-					return nil
+					as = append(as, a)
 				}
 			}
-			dlog.Debugf(ctx, "Got empty snapshot while waiting for agent %s.%s", name, namespace)
+			if len(as) > 0 {
+				return as, nil
+			}
 		case <-ctx.Done():
 			v := "canceled"
 			if ctx.Err() == context.DeadlineExceeded {
@@ -471,7 +522,7 @@ func (s *state) waitForAgent(ctx context.Context, name, namespace string, failed
 				bf.WriteString(": Events that may be relevant:\n")
 				writeEventList(bf, fes)
 			}
-			return errcat.User.New(bf.String())
+			return nil, errcat.User.New(bf.String())
 		}
 	}
 }

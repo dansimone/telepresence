@@ -23,7 +23,7 @@ service Connector {
   rpc TrafficManagerVersion(google.protobuf.Empty) returns (telepresence.common.VersionInfo);
 
   // Returns the fully qualified image name of the traffic-agent that the agent-injector is configured to inject.
-  rpc AgentImageFQN(google.protobuf.Empty) returns (telepresence.manager.AgentImageFQN);
+  rpc AgentImageFQN(google.protobuf.Empty) returns (manager.AgentImageFQN);
 
   // GetIntercept gets info from intercept name
   rpc GetIntercept(manager.GetInterceptRequest) returns (manager.InterceptInfo);
@@ -55,9 +55,9 @@ service Connector {
 
   // Deactivates and removes an existent workload intercept.
   // Requires having already called Connect.
-  rpc RemoveIntercept(telepresence.manager.RemoveInterceptRequest2) returns (InterceptResult);
+  rpc RemoveIntercept(manager.RemoveInterceptRequest2) returns (InterceptResult);
 
-  rpc UpdateIntercept(telepresence.manager.UpdateInterceptRequest) returns (telepresence.manager.InterceptInfo);
+  rpc UpdateIntercept(manager.UpdateInterceptRequest) returns (manager.InterceptInfo);
 
   // Uninstalls traffic-agents from the cluster.
   // Requires having already called Connect.
@@ -95,7 +95,7 @@ service Connector {
   rpc GetNamespaces(GetNamespacesRequest) returns (GetNamespacesResponse);
 
   // GetKnownWorkloadKinds returns the known workload kinds
-  rpc GetKnownWorkloadKinds(google.protobuf.Empty) returns (telepresence.manager.KnownWorkloadKinds);
+  rpc GetKnownWorkloadKinds(google.protobuf.Empty) returns (manager.KnownWorkloadKinds);
 
   // RemoteMountAvailability checks if remote mounts are possible using the given
   // mount type and returns an error if its not.
@@ -123,7 +123,7 @@ service ManagerProxy {
   rpc GetClientConfig(google.protobuf.Empty) returns (manager.CLIConfig);
 
   // EnsureAgent ensures that an agent is injected to the pods of a workload
-  rpc EnsureAgent(manager.EnsureAgentRequest) returns (google.protobuf.Empty);
+  rpc EnsureAgent(manager.EnsureAgentRequest) returns (manager.AgentInfoSnapshot);
 
   // WatchClusterInfo returns information needed when establishing
   // connectivity to the cluster.
@@ -219,11 +219,11 @@ message ConnectInfo {
 
   string manager_install_id = 7;
 
-  telepresence.manager.InterceptInfoSnapshot intercepts = 8;
+  manager.InterceptInfoSnapshot intercepts = 8;
 
-  telepresence.manager.SessionInfo session_info = 10;
+  manager.SessionInfo session_info = 10;
 
-  telepresence.manager.VersionInfo2 manager_version = 19;
+  manager.VersionInfo2 manager_version = 19;
 
   // cluster_id
   // deprecated. Use manager_install_id
@@ -259,7 +259,7 @@ message UninstallRequest {
 message CreateInterceptRequest {
   // No need to set spec.client; the connector will fill that in for
   // you.
-  telepresence.manager.InterceptSpec spec = 1;
+  manager.InterceptSpec spec = 1;
   string mount_point = 2;
   string agent_image = 3;
   bool is_pod_daemon = 4;
@@ -305,7 +305,7 @@ message WorkloadInfo {
   Sidecar sidecar = 10;
 
   // InterceptInfos reported from the traffic manager in case the workload is currently intercepted
-  repeated telepresence.manager.InterceptInfo intercept_infos = 9;
+  repeated manager.InterceptInfo intercept_infos = 9;
 
   // Workload Resource type (e.g. Deployment, ReplicaSet, StatefulSet)
   string workload_resource_type = 5;

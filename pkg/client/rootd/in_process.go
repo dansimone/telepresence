@@ -25,6 +25,10 @@ type userdToManagerShortcut struct {
 	manager.ManagerClient
 }
 
+func (m *userdToManagerShortcut) EnsureAgent(ctx context.Context, in *manager.EnsureAgentRequest, opts ...grpc.CallOption) (*manager.AgentInfoSnapshot, error) {
+	return m.ManagerClient.EnsureAgent(ctx, in, opts...)
+}
+
 func (m *userdToManagerShortcut) WatchClusterInfo(ctx context.Context, in *manager.SessionInfo, opts ...grpc.CallOption) (connector.ManagerProxy_WatchClusterInfoClient, error) {
 	return m.ManagerClient.WatchClusterInfo(ctx, in, opts...)
 }

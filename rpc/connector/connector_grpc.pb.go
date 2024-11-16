@@ -1278,7 +1278,7 @@ type ManagerProxyClient interface {
 	// GetClientConfig returns the config that connected clients should use for this manager.
 	GetClientConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*manager.CLIConfig, error)
 	// EnsureAgent ensures that an agent is injected to the pods of a workload
-	EnsureAgent(ctx context.Context, in *manager.EnsureAgentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	EnsureAgent(ctx context.Context, in *manager.EnsureAgentRequest, opts ...grpc.CallOption) (*manager.AgentInfoSnapshot, error)
 	// WatchClusterInfo returns information needed when establishing
 	// connectivity to the cluster.
 	WatchClusterInfo(ctx context.Context, in *manager.SessionInfo, opts ...grpc.CallOption) (ManagerProxy_WatchClusterInfoClient, error)
@@ -1322,9 +1322,9 @@ func (c *managerProxyClient) GetClientConfig(ctx context.Context, in *emptypb.Em
 	return out, nil
 }
 
-func (c *managerProxyClient) EnsureAgent(ctx context.Context, in *manager.EnsureAgentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *managerProxyClient) EnsureAgent(ctx context.Context, in *manager.EnsureAgentRequest, opts ...grpc.CallOption) (*manager.AgentInfoSnapshot, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(manager.AgentInfoSnapshot)
 	err := c.cc.Invoke(ctx, ManagerProxy_EnsureAgent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1421,7 +1421,7 @@ type ManagerProxyServer interface {
 	// GetClientConfig returns the config that connected clients should use for this manager.
 	GetClientConfig(context.Context, *emptypb.Empty) (*manager.CLIConfig, error)
 	// EnsureAgent ensures that an agent is injected to the pods of a workload
-	EnsureAgent(context.Context, *manager.EnsureAgentRequest) (*emptypb.Empty, error)
+	EnsureAgent(context.Context, *manager.EnsureAgentRequest) (*manager.AgentInfoSnapshot, error)
 	// WatchClusterInfo returns information needed when establishing
 	// connectivity to the cluster.
 	WatchClusterInfo(*manager.SessionInfo, ManagerProxy_WatchClusterInfoServer) error
@@ -1448,7 +1448,7 @@ func (UnimplementedManagerProxyServer) Version(context.Context, *emptypb.Empty) 
 func (UnimplementedManagerProxyServer) GetClientConfig(context.Context, *emptypb.Empty) (*manager.CLIConfig, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetClientConfig not implemented")
 }
-func (UnimplementedManagerProxyServer) EnsureAgent(context.Context, *manager.EnsureAgentRequest) (*emptypb.Empty, error) {
+func (UnimplementedManagerProxyServer) EnsureAgent(context.Context, *manager.EnsureAgentRequest) (*manager.AgentInfoSnapshot, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnsureAgent not implemented")
 }
 func (UnimplementedManagerProxyServer) WatchClusterInfo(*manager.SessionInfo, ManagerProxy_WatchClusterInfoServer) error {
