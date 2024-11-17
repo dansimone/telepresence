@@ -25,7 +25,7 @@ import (
 
 type largeFilesSuite struct {
 	itest.Suite
-	itest.NamespacePair
+	itest.TrafficManager
 	name         string
 	serviceCount int
 	mountPoint   []string
@@ -49,14 +49,14 @@ const (
 )
 
 func init() {
-	itest.AddTrafficManagerSuite("", func(h itest.NamespacePair) itest.TestingSuite {
+	itest.AddTrafficManagerSuite("", func(h itest.TrafficManager) itest.TestingSuite {
 		return &largeFilesSuite{
-			Suite:         itest.Suite{Harness: h},
-			NamespacePair: h,
-			name:          "hello",
-			serviceCount:  svcCount,
-			mountPoint:    make([]string, svcCount),
-			largeFiles:    make([]string, svcCount*fileCountPerSvc),
+			Suite:          itest.Suite{Harness: h},
+			TrafficManager: h,
+			name:           "hello",
+			serviceCount:   svcCount,
+			mountPoint:     make([]string, svcCount),
+			largeFiles:     make([]string, svcCount*fileCountPerSvc),
 		}
 	})
 }

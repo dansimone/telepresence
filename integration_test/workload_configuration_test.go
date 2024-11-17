@@ -11,7 +11,7 @@ import (
 
 type workloadConfigurationSuite struct {
 	itest.Suite
-	itest.NamespacePair
+	itest.TrafficManager
 }
 
 func (s *workloadConfigurationSuite) SuiteName() string {
@@ -19,8 +19,8 @@ func (s *workloadConfigurationSuite) SuiteName() string {
 }
 
 func init() {
-	itest.AddTrafficManagerSuite("-workload-configuration", func(h itest.NamespacePair) itest.TestingSuite {
-		return &workloadConfigurationSuite{Suite: itest.Suite{Harness: h}, NamespacePair: h}
+	itest.AddTrafficManagerSuite("-workload-configuration", func(h itest.TrafficManager) itest.TestingSuite {
+		return &workloadConfigurationSuite{Suite: itest.Suite{Harness: h}, TrafficManager: h}
 	})
 }
 
@@ -44,7 +44,7 @@ func (s *workloadConfigurationSuite) disabledWorkloadKind(tp, wl string) {
 
 	_, stderr, err := itest.Telepresence(ctx, "intercept", wl)
 	require.Error(err)
-	require.Contains(stderr, fmt.Sprintf("connector.CreateIntercept: workload \"%s.%s\" not found", wl, s.NamespacePair.AppNamespace()))
+	require.Contains(stderr, fmt.Sprintf("connector.CreateIntercept: workload \"%s.%s\" not found", wl, s.AppNamespace()))
 }
 
 func (s *workloadConfigurationSuite) uninstallAgents(ctx context.Context, wl string) {

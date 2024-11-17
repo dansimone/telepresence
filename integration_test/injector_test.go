@@ -185,6 +185,7 @@ func (s *singleServiceSuite) Test_HelmUpgradeWebhookSecret() {
 	}, 12*time.Second, 3*time.Second)
 
 	s.TelepresenceHelmInstallOK(ctx, true, "--set", "agentInjector.certificate.regenerate=true,agentInjector.certificate.accessMethod=watch,logLevel=debug")
+	defer s.RollbackTM(ctx)
 	time.Sleep(5 * time.Second)
 
 	// Check that the intercept is still active

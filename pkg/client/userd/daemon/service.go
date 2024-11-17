@@ -219,6 +219,12 @@ func (s *service) configReload(c context.Context) error {
 // a session and writes a reply to the connectErrCh. The session is then started if it was
 // successfully created.
 func (s *service) ManageSessions(c context.Context) error {
+	c, cancel := context.WithCancel(c)
+	s.quit = func() {
+		if !s.quitDisable {
+			cancel()
+		}
+	}
 	wg := sync.WaitGroup{}
 	defer wg.Wait()
 
@@ -407,7 +413,7 @@ func run(cmd *cobra.Command, _ []string) error {
 		name = name[:di]
 	}
 	c = dgroup.WithGoroutineName(c, "/"+name)
-	c, err = logging.InitContext(c, userd.ProcessName, logging.RotateDaily, true)
+	c, err = logging.InitContext(c, userd.ProcessName, logging.RotateDaily, true, false)
 	if err != nil {
 		return err
 	}
@@ -489,7 +495,7 @@ func run(cmd *cobra.Command, _ []string) error {
 
 	if cfg.Intercept().UseFtp {
 		g.Go("fuseftp-server", func(c context.Context) error {
-			if err := s.fuseFtpMgr.DeferInit(c); err != nil {
+			if err := s.InitFTPServer(c); err != nil {
 				dlog.Error(c, err)
 			}
 			<-c.Done()
@@ -513,12 +519,6 @@ func run(cmd *cobra.Command, _ []string) error {
 
 	g.Go("config-reload", s.configReload)
 	g.Go(sessionName, func(c context.Context) error {
-		c, cancel := context.WithCancel(c)
-		s.quit = func() {
-			if !s.quitDisable {
-				cancel()
-			}
-		}
 		return s.ManageSessions(c)
 	})
 
@@ -531,4 +531,8 @@ func run(cmd *cobra.Command, _ []string) error {
 		dlog.Error(c, err)
 	}
 	return err
+}
+
+func (s *service) InitFTPServer(ctx context.Context) error {
+	return s.fuseFtpMgr.DeferInit(ctx)
 }

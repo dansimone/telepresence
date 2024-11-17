@@ -41,6 +41,6 @@ spec:
               containerPort: {{ .ContainerPort | default 8080 }}
 {{- with .Environment }}
           env:
-  {{- toYaml . | nindent 12 }}
+{{- toYaml . | nindent 12 }}
 {{- end}}
 

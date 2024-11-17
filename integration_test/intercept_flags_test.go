@@ -19,7 +19,7 @@ import (
 
 type interceptFlagSuite struct {
 	itest.Suite
-	itest.NamespacePair
+	itest.TrafficManager
 	serviceName string
 }
 
@@ -28,8 +28,8 @@ func (s *interceptFlagSuite) SuiteName() string {
 }
 
 func init() {
-	itest.AddTrafficManagerSuite("-intercept-flag", func(h itest.NamespacePair) itest.TestingSuite {
-		return &interceptFlagSuite{Suite: itest.Suite{Harness: h}, NamespacePair: h}
+	itest.AddTrafficManagerSuite("-intercept-flag", func(h itest.TrafficManager) itest.TestingSuite {
+		return &interceptFlagSuite{Suite: itest.Suite{Harness: h}, TrafficManager: h}
 	})
 }
 

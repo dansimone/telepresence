@@ -459,7 +459,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	c = dgroup.WithGoroutineName(c, "/"+ProcessName)
-	c, err = logging.InitContext(c, ProcessName, logging.RotateDaily, true)
+	c, err = logging.InitContext(c, ProcessName, logging.RotateDaily, true, false)
 	if err != nil {
 		return err
 	}

@@ -22,7 +22,7 @@ import (
 
 type multiConnectSuite struct {
 	itest.Suite
-	itest.NamespacePair
+	itest.TrafficManager
 	appSpace2  string
 	mgrSpace2  string
 	handlerTag string
@@ -34,8 +34,8 @@ func (s *multiConnectSuite) SuiteName() string {
 
 func init() {
 	// This will give us one namespace pair with a traffic-manager installed.
-	itest.AddTrafficManagerSuite("-1", func(h itest.NamespacePair) itest.TestingSuite {
-		return &multiConnectSuite{Suite: itest.Suite{Harness: h}, NamespacePair: h}
+	itest.AddTrafficManagerSuite("-1", func(h itest.TrafficManager) itest.TestingSuite {
+		return &multiConnectSuite{Suite: itest.Suite{Harness: h}, TrafficManager: h}
 	})
 }
 

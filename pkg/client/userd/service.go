@@ -40,8 +40,8 @@ type Service interface {
 
 	PostConnectRequest(context.Context, ConnectRequest) error
 	ReadConnectResponse(context.Context) (*rpc.ConnectInfo, error)
-
-	ManageSessions(c context.Context) error
+	InitFTPServer(context.Context) error
+	ManageSessions(context.Context) error
 }
 
 type NewServiceFunc func(context.Context, *dgroup.Group, client.Config, *grpc.Server) (Service, error)

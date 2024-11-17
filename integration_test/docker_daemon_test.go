@@ -19,7 +19,7 @@ import (
 
 type dockerDaemonSuite struct {
 	itest.Suite
-	itest.NamespacePair
+	itest.TrafficManager
 	ctx context.Context
 }
 
@@ -28,8 +28,8 @@ func (s *dockerDaemonSuite) SuiteName() string {
 }
 
 func init() {
-	itest.AddTrafficManagerSuite("", func(h itest.NamespacePair) itest.TestingSuite {
-		return &dockerDaemonSuite{Suite: itest.Suite{Harness: h}, NamespacePair: h}
+	itest.AddTrafficManagerSuite("", func(h itest.TrafficManager) itest.TestingSuite {
+		return &dockerDaemonSuite{Suite: itest.Suite{Harness: h}, TrafficManager: h}
 	})
 }
 

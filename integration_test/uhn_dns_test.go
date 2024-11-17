@@ -15,7 +15,7 @@ import (
 
 type unqualifiedHostNameDNSSuite struct {
 	itest.Suite
-	itest.NamespacePair
+	itest.TrafficManager
 }
 
 func (s *unqualifiedHostNameDNSSuite) SuiteName() string {
@@ -23,8 +23,8 @@ func (s *unqualifiedHostNameDNSSuite) SuiteName() string {
 }
 
 func init() {
-	itest.AddTrafficManagerSuite("", func(h itest.NamespacePair) itest.TestingSuite {
-		return &unqualifiedHostNameDNSSuite{Suite: itest.Suite{Harness: h}, NamespacePair: h}
+	itest.AddTrafficManagerSuite("", func(h itest.TrafficManager) itest.TestingSuite {
+		return &unqualifiedHostNameDNSSuite{Suite: itest.Suite{Harness: h}, TrafficManager: h}
 	})
 }
 

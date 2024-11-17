@@ -17,7 +17,7 @@ import (
 
 type argoRolloutsSuite struct {
 	itest.Suite
-	itest.NamespacePair
+	itest.TrafficManager
 }
 
 func (s *argoRolloutsSuite) SuiteName() string {
@@ -25,8 +25,8 @@ func (s *argoRolloutsSuite) SuiteName() string {
 }
 
 func init() {
-	itest.AddTrafficManagerSuite("-argo-rollouts", func(h itest.NamespacePair) itest.TestingSuite {
-		return &argoRolloutsSuite{Suite: itest.Suite{Harness: h}, NamespacePair: h}
+	itest.AddTrafficManagerSuite("-argo-rollouts", func(h itest.TrafficManager) itest.TestingSuite {
+		return &argoRolloutsSuite{Suite: itest.Suite{Harness: h}, TrafficManager: h}
 	})
 }
 

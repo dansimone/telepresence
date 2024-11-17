@@ -12,7 +12,7 @@ import (
 type Runner interface {
 	AddClusterSuite(func(context.Context) TestingSuite)
 	AddNamespacePairSuite(suffix string, f func(NamespacePair) TestingSuite)
-	AddTrafficManagerSuite(suffix string, f func(NamespacePair) TestingSuite)
+	AddTrafficManagerSuite(suffix string, f func(TrafficManager) TestingSuite)
 	AddConnectedSuite(suffix string, f func(NamespacePair) TestingSuite)
 	AddMultipleServicesSuite(suffix, name string, f func(MultipleServices) TestingSuite)
 	AddSingleServiceSuite(suffix, name string, f func(SingleService) TestingSuite)
@@ -26,7 +26,7 @@ type namedRunner struct {
 
 type suffixedRunner struct {
 	withNamespace      []func(NamespacePair) TestingSuite
-	withTrafficManager []func(NamespacePair) TestingSuite
+	withTrafficManager []func(TrafficManager) TestingSuite
 	withConnected      []func(NamespacePair) TestingSuite
 	withName           map[string]*namedRunner
 }
@@ -72,13 +72,13 @@ func (r *runner) AddNamespacePairSuite(suffix string, f func(NamespacePair) Test
 
 // AddTrafficManagerSuite adds a constructor for a test suite that requires a cluster where a namespace
 // pair has been initialized and a traffic manager is installed.
-func AddTrafficManagerSuite(suffix string, f func(NamespacePair) TestingSuite) {
+func AddTrafficManagerSuite(suffix string, f func(manager TrafficManager) TestingSuite) {
 	defaultRunner.AddTrafficManagerSuite(suffix, f)
 }
 
 // AddTrafficManagerSuite adds a constructor for a test suite that requires a cluster where a namespace
 // pair has been initialized and a traffic manager is installed.
-func (r *runner) AddTrafficManagerSuite(suffix string, f func(NamespacePair) TestingSuite) {
+func (r *runner) AddTrafficManagerSuite(suffix string, f func(TrafficManager) TestingSuite) {
 	sr := r.forSuffix(suffix)
 	sr.withTrafficManager = append(sr.withTrafficManager, f)
 }
@@ -159,7 +159,7 @@ func (r *runner) RunTests(c context.Context) { //nolint:gocognit
 						np.RunSuite(f(np))
 					}
 					if len(sr.withTrafficManager)+len(sr.withConnected)+len(sr.withName) > 0 {
-						WithTrafficManager(np, func(c context.Context, cnp NamespacePair) {
+						WithTrafficManager(np, func(c context.Context, cnp TrafficManager) {
 							for _, f := range sr.withTrafficManager {
 								cnp.RunSuite(f(cnp))
 							}
