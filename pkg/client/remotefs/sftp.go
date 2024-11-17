@@ -27,7 +27,7 @@ func NewSFTPMounter(iceptWG, podWG *sync.WaitGroup) Mounter {
 	return &sftpMounter{iceptWG: iceptWG, podWG: podWG}
 }
 
-func (m *sftpMounter) Start(ctx context.Context, id, clientMountPoint, mountPoint string, podIP net.IP, port uint16) error {
+func (m *sftpMounter) Start(ctx context.Context, id, clientMountPoint, mountPoint string, podIP net.IP, port uint16, ro bool) error {
 	ctx = dgroup.WithGoroutineName(ctx, iputil.JoinIpPort(podIP, port))
 
 	// The mount is terminated and restarted when the intercept pod changes, so we
@@ -70,6 +70,9 @@ func (m *sftpMounter) Start(ctx context.Context, id, clientMountPoint, mountPoin
 				// mount directives
 				"-o", "follow_symlinks",
 				"-o", "allow_root", // needed to make --docker-run work as docker runs as root
+			}
+			if ro {
+				sshfsArgs = append(sshfsArgs, "-o", "ro")
 			}
 
 			useIPv6 := len(podIP) == 16

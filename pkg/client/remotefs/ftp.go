@@ -27,7 +27,7 @@ func NewFTPMounter(client rpc.FuseFTPClient, iceptWG *sync.WaitGroup) Mounter {
 	return &ftpMounter{client: client, iceptWG: iceptWG}
 }
 
-func (m *ftpMounter) Start(ctx context.Context, id, clientMountPoint, mountPoint string, podIP net.IP, port uint16) error {
+func (m *ftpMounter) Start(ctx context.Context, id, clientMountPoint, mountPoint string, podIP net.IP, port uint16, ro bool) error {
 	// The FTPClient and the NewHost must be controlled by the intercept context and not by the pod context that
 	// is passed as a parameter, because those services will survive pod changes.
 	addr := netip.MustParseAddrPort(iputil.JoinIpPort(podIP, port))
@@ -45,6 +45,7 @@ func (m *ftpMounter) Start(ctx context.Context, id, clientMountPoint, mountPoint
 			},
 			ReadTimeout: durationpb.New(cfg.Timeouts().Get(client.TimeoutFtpReadWrite)),
 			Directory:   rmp,
+			ReadOnly:    ro,
 		})
 		cancel()
 		if err != nil {

@@ -69,6 +69,9 @@ type intercept struct {
 
 	// Use bridged ftp/sftp mount through this local port
 	localMountPort int32
+
+	// Mount read-only
+	readOnly bool
 }
 
 // interceptResult is what gets written to the awaitIntercept's waitCh channel when the

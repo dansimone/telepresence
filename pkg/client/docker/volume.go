@@ -50,6 +50,7 @@ func EnsureVolumePlugin(ctx context.Context) (string, error) {
 	if !pi.Enabled {
 		err = cli.PluginEnable(ctx, pn, types.PluginEnableOptions{Timeout: 5})
 	}
+	dlog.Debugf(ctx, "using volume plugin: %s", pn)
 	return pn, err
 }
 
@@ -113,10 +114,10 @@ func getLatestPluginVersion(ctx context.Context, pluginName string) (ver semver.
 	dlog.Debugf(ctx, "Checking for latest version of %s", pluginName)
 	cfg := client.GetConfig(ctx).Intercept().Telemount
 	if cfg.RegistryAPI == "ghcr.io/v2" {
-		// This registryAPI have on support for anonymous queries, so we hardcode a default for the 0.1.5 version here for now.
+		// This registryAPI have on support for anonymous queries, so we hardcode a default for the 0.1.6 version here for now.
 		tag := cfg.Tag
 		if tag == "" {
-			tag = "0.1.5"
+			tag = "0.1.6"
 		}
 		if tag == "debug" {
 			return zeroVersion, nil
@@ -162,14 +163,14 @@ func getLatestPluginVersion(ctx context.Context, pluginName string) (ver semver.
 	return ver, err
 }
 
-func StartVolumeMounts(ctx context.Context, pluginName, dcName, container string, sftpPort int32, mounts, vols []string) ([]string, error) {
+func StartVolumeMounts(ctx context.Context, pluginName, dcName, container string, sftpPort int32, mounts, vols []string, ro bool) ([]string, error) {
 	host, err := ContainerIP(ctx, dcName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieved container ip for %s: %w", dcName, err)
 	}
 	for i, dir := range mounts {
 		v := fmt.Sprintf("%s-%d", container, i)
-		if err := startVolumeMount(ctx, pluginName, host, sftpPort, v, container, dir); err != nil {
+		if err := startVolumeMount(ctx, pluginName, host, sftpPort, v, container, dir, ro); err != nil {
 			return vols, err
 		}
 		vols = append(vols, v)
@@ -185,20 +186,37 @@ func StopVolumeMounts(ctx context.Context, vols []string) {
 	}
 }
 
-func startVolumeMount(ctx context.Context, pluginName, host string, port int32, volumeName, container, dir string) error {
+func startVolumeMount(ctx context.Context, pluginName, host string, port int32, volumeName, container, dir string, ro bool) error {
 	cli, err := GetClient(ctx)
 	if err != nil {
 		return err
 	}
+	opts := map[string]string{
+		"host":      host,
+		"container": container,
+		"port":      strconv.Itoa(int(port)),
+		"dir":       dir,
+	}
+	if ro {
+		var ver *semver.Version
+		if di := strings.LastIndexByte(pluginName, '-'); di > 0 {
+			tag := pluginName[di+1:]
+			if v, err := semver.Parse(tag); err == nil {
+				ver = &v
+			}
+		}
+		if ver != nil && ver.LT(semver.MustParse("0.1.6")) {
+			dlog.Warnf(ctx, "The %q docker volume plugin does not support read-only mode. Please upgrade to a more recent version", pluginName)
+		} else {
+			opts["ro"] = "true"
+		}
+	}
+
+	dlog.Debugf(ctx, "VolumeCreate(%s, %s, %s)", pluginName, opts, volumeName)
 	_, err = cli.VolumeCreate(ctx, volume.CreateOptions{
-		Driver: pluginName,
-		DriverOpts: map[string]string{
-			"host":      host,
-			"container": container,
-			"port":      strconv.Itoa(int(port)),
-			"dir":       dir,
-		},
-		Name: volumeName,
+		Driver:     pluginName,
+		DriverOpts: opts,
+		Name:       volumeName,
 	})
 	if err != nil {
 		err = fmt.Errorf("docker volume create %d %s %s: %w", port, container, dir, err)

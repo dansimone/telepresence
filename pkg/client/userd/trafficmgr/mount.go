@@ -60,7 +60,7 @@ func (ic *intercept) startMount(ctx context.Context, iceptWG, podWG *sync.WaitGr
 		}
 		ic.Mounter = m
 	}
-	err := m.Start(mountCtx, ic.Id, ic.ClientMountPoint, ic.MountPoint, iputil.Parse(ic.PodIp), uint16(port))
+	err := m.Start(mountCtx, ic.Id, ic.ClientMountPoint, ic.MountPoint, iputil.Parse(ic.PodIp), uint16(port), ic.readOnly)
 	if err != nil && ctx.Err() == nil {
 		dlog.Error(ctx, err)
 	}

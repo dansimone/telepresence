@@ -227,7 +227,7 @@ func (s *state) startInDocker(ctx context.Context, name, envFile string, args []
 				}
 				container := s.env["TELEPRESENCE_CONTAINER"]
 				dlog.Infof(ctx, "Mounting %v from container %s", m.Mounts, container)
-				dr.volumes, dr.err = docker.StartVolumeMounts(ctx, pluginName, daemonName, container, m.Port, m.Mounts, nil)
+				dr.volumes, dr.err = docker.StartVolumeMounts(ctx, pluginName, daemonName, container, m.Port, m.Mounts, nil, false)
 				if dr.err != nil {
 					return dr
 				}
