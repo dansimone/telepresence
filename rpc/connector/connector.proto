@@ -293,38 +293,20 @@ message WorkloadInfo {
   string name = 1;
 
   // Namespace of workload
-  string namespace = 6;
+  string namespace = 2;
 
   // Reason why workload cannot be intercepted, or empty if it can.
-  string not_interceptable_reason = 2;
-
-  message Sidecar {
-    bytes json = 1;
-  }
-  // Sidecar
-  Sidecar sidecar = 10;
+  string not_interceptable_reason = 3;
 
   // InterceptInfos reported from the traffic manager in case the workload is currently intercepted
-  repeated manager.InterceptInfo intercept_infos = 9;
+  repeated manager.InterceptInfo intercept_infos = 4;
 
-  // Workload Resource type (e.g. Deployment, ReplicaSet, StatefulSet)
-  string workload_resource_type = 5;
+  // Workload Resource type (e.g. Deployment, ReplicaSet, StatefulSet, Rollout)
+  string workload_resource_type = 6;
 
-  message ServiceReference {
-    string name = 1;
-    string namespace = 2;
-    message Port {
-      string name = 1;
-      int32 port = 2;
-    }
-    repeated Port ports = 4;
-  }
+  string uid = 7;
 
-  map<string, ServiceReference> services = 11;
-
-  string uid = 8;
-
-  reserved 4;
+  string agent_version = 8;
 }
 
 message WorkloadInfoSnapshot {

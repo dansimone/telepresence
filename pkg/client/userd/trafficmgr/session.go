@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-json-experiment/json"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -121,6 +120,9 @@ type session struct {
 	// currentAPIServers, interceptWaiters, and ingressInfo are synchronized
 	//
 	currentInterceptsLock sync.Mutex
+
+	// currentAgents is the latest snapshot returned by the agents watcher.
+	currentAgents []*manager.AgentInfo
 
 	// currentIntercepts is the latest snapshot returned by the intercept watcher. It
 	// is keyeed by the intercept ID
@@ -533,6 +535,7 @@ func (s *session) Epilog(ctx context.Context) {
 
 func (s *session) StartServices(g *dgroup.Group) {
 	g.Go("remain", s.remainLoop)
+	g.Go("agents", s.watchAgentsLoop)
 	g.Go("intercept-port-forward", s.watchInterceptsHandler)
 	g.Go("dial-request-watcher", s.dialRequestWatcher)
 }
@@ -578,7 +581,7 @@ func (s *session) ApplyConfig(ctx context.Context) error {
 func (s *session) getInfosForWorkloads(
 	namespaces []string,
 	iMap map[string][]*manager.InterceptInfo,
-	sMap map[string]*rpc.WorkloadInfo_Sidecar,
+	sMap map[string]string,
 	filter rpc.ListRequest_Filter,
 ) []*rpc.WorkloadInfo {
 	wiMap := make(map[string]*rpc.WorkloadInfo)
@@ -595,10 +598,10 @@ func (s *session) getInfosForWorkloads(
 		}
 
 		var ok bool
-		if wlInfo.InterceptInfos, ok = iMap[name]; !ok && filter <= rpc.ListRequest_INTERCEPTS {
+		if wlInfo.InterceptInfos, ok = iMap[name]; !ok && filter == rpc.ListRequest_INTERCEPTS {
 			return
 		}
-		if wlInfo.Sidecar, ok = sMap[name]; !ok && filter <= rpc.ListRequest_INSTALLED_AGENTS {
+		if wlInfo.AgentVersion, ok = sMap[name]; !ok && filter == rpc.ListRequest_INSTALLED_AGENTS {
 			return
 		}
 		wiMap[fmt.Sprintf("%s:%s.%s", kind, name, namespace)] = wlInfo
@@ -696,7 +699,8 @@ func (s *session) WorkloadInfoSnapshot(
 	is := s.getCurrentIntercepts()
 
 	var nss []string
-	if filter == rpc.ListRequest_INTERCEPTS {
+	var sMap map[string]string
+	if filter == rpc.ListRequest_INTERCEPTS || filter == rpc.ListRequest_INSTALLED_AGENTS {
 		// Special case, we don't care about namespaces in general. Instead, we use the connected namespace
 		nss = []string{s.Namespace}
 	} else {
@@ -713,8 +717,14 @@ func (s *session) WorkloadInfoSnapshot(
 		dlog.Debug(ctx, "No namespaces are mapped")
 		return &rpc.WorkloadInfoSnapshot{}, nil
 	}
+	if len(nss) == 1 && nss[0] == s.Namespace {
+		cas := s.getCurrentAgents()
+		sMap = make(map[string]string, len(cas))
+		for _, a := range cas {
+			sMap[a.Name] = a.Version
+		}
+	}
 	s.ensureWatchers(ctx, nss)
-
 	iMap := make(map[string][]*manager.InterceptInfo, len(is))
 nextIs:
 	for _, i := range is {
@@ -723,17 +733,6 @@ nextIs:
 				iMap[i.Spec.Agent] = append(iMap[i.Spec.Agent], i.InterceptInfo)
 				continue nextIs
 			}
-		}
-	}
-
-	sMap := make(map[string]*rpc.WorkloadInfo_Sidecar)
-	for _, ns := range nss {
-		for k, v := range s.getCurrentSidecarsInNamespace(ctx, ns) {
-			data, err := json.Marshal(v)
-			if err != nil {
-				continue
-			}
-			sMap[k] = &rpc.WorkloadInfo_Sidecar{Json: data}
 		}
 	}
 

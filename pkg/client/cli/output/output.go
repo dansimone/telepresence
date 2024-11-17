@@ -71,7 +71,7 @@ func Object(ctx context.Context, obj any, override bool) {
 			}
 
 			if o.format == formatJSONStream {
-				if err := json.MarshalWrite(o.originalStdout, obj); err != nil {
+				if err := json.MarshalWrite(o.originalStdout, obj, json.Deterministic(true)); err != nil {
 					panic(err)
 				}
 			} else {
@@ -143,11 +143,11 @@ func Execute(cmd *cobra.Command) (*cobra.Command, bool, error) {
 	}
 	switch o.format {
 	case formatJSON:
-		if encErr := json.MarshalWrite(o.originalStdout, obj); encErr != nil {
+		if encErr := json.MarshalWrite(o.originalStdout, obj, json.Deterministic(true)); encErr != nil {
 			panic(encErr)
 		}
 	case formatYAML:
-		ym, encErr := json.Marshal(obj)
+		ym, encErr := json.Marshal(obj, json.Deterministic(true))
 		if encErr == nil {
 			ym, encErr = yaml.JSONToYAML(ym)
 		}

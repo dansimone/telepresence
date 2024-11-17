@@ -2,16 +2,13 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"io"
 
-	"github.com/go-json-experiment/json"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
 	"github.com/datawire/dlib/dlog"
 	"github.com/telepresenceio/telepresence/rpc/v2/connector"
-	"github.com/telepresenceio/telepresence/v2/pkg/agentconfig"
 	"github.com/telepresenceio/telepresence/v2/pkg/client"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/ann"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/connect"
@@ -19,6 +16,7 @@ import (
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/intercept"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/output"
 	"github.com/telepresenceio/telepresence/v2/pkg/errcat"
+	"github.com/telepresenceio/telepresence/v2/pkg/ioutil"
 )
 
 type listCommand struct {
@@ -28,11 +26,6 @@ type listCommand struct {
 	debug             bool
 	namespace         string
 	watch             bool
-}
-
-type workloadJSONOutput struct {
-	*connector.WorkloadInfo
-	Sidecar *agentconfig.Sidecar `json:"sidecar,omitempty"`
 }
 
 func list() *cobra.Command {
@@ -165,7 +158,7 @@ func (s *listCommand) printList(ctx context.Context, workloads []*connector.Work
 		if formattedOut {
 			output.Object(ctx, []struct{}{}, false)
 		} else {
-			fmt.Fprintln(stdout, "No Workloads (Deployments, StatefulSets, ReplicaSets, or Rollouts)")
+			ioutil.Println(stdout, "No Workloads (Deployments, StatefulSets, ReplicaSets, or Rollouts)")
 		}
 		return
 	}
@@ -174,11 +167,10 @@ func (s *listCommand) printList(ctx context.Context, workloads []*connector.Work
 		if iis := workload.InterceptInfos; len(iis) > 0 {
 			return intercept.DescribeIntercepts(ctx, iis, "", s.debug)
 		}
-		ai := workload.Sidecar
 		if workload.NotInterceptableReason == "Progressing" {
 			return "progressing..."
 		}
-		if ai != nil {
+		if workload.AgentVersion != "" {
 			return "ready to intercept (traffic-agent already installed)"
 		}
 		if workload.NotInterceptableReason != "" {
@@ -189,29 +181,12 @@ func (s *listCommand) printList(ctx context.Context, workloads []*connector.Work
 	}
 
 	if formattedOut {
-		o := make([]*workloadJSONOutput, len(workloads))
-		for i, v := range workloads {
-			l := workloadJSONOutput{WorkloadInfo: v}
-
-			if v.Sidecar != nil {
-				var sidecar agentconfig.Sidecar
-				_ = json.Unmarshal(v.Sidecar.Json, &sidecar)
-				l.Sidecar = &sidecar
-			}
-
-			o[i] = &l
-		}
-
-		output.Object(ctx, o, false)
+		output.Object(ctx, workloads, false)
 	} else {
 		includeNs := false
 		ns := s.namespace
 		for _, dep := range workloads {
 			depNs := dep.Namespace
-			if depNs == "" {
-				// Local-only, so use namespace of first intercept
-				depNs = dep.InterceptInfos[0].Spec.Namespace
-			}
 			if ns != "" && depNs != ns {
 				includeNs = true
 				break
@@ -221,10 +196,6 @@ func (s *listCommand) printList(ctx context.Context, workloads []*connector.Work
 		nameLen := 0
 		for _, dep := range workloads {
 			n := dep.Name
-			if n == "" {
-				// Local-only, so use name of first intercept
-				n = dep.InterceptInfos[0].Spec.Name
-			}
 			nl := len(n)
 			if includeNs {
 				nl += len(dep.Namespace) + 1
@@ -234,20 +205,11 @@ func (s *listCommand) printList(ctx context.Context, workloads []*connector.Work
 			}
 		}
 		for _, workload := range workloads {
-			if workload.Name == "" {
-				// Local-only, so use name of first intercept
-				n := workload.InterceptInfos[0].Spec.Name
-				if includeNs {
-					n += "." + workload.Namespace
-				}
-				fmt.Fprintf(stdout, "%-*s: local-only intercept\n", nameLen, n)
-			} else {
-				n := workload.Name
-				if includeNs {
-					n += "." + workload.Namespace
-				}
-				fmt.Fprintf(stdout, "%-*s: %s\n", nameLen, n, state(workload))
+			n := workload.Name
+			if includeNs {
+				n += "." + workload.Namespace
 			}
+			ioutil.Printf(stdout, "%-*s: %s\n", nameLen, n, state(workload))
 		}
 	}
 }
