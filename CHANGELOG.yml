@@ -81,9 +81,9 @@ items:
       - type: feature
         title: Add deployments, statefulSets, replicaSets to workloads Helm chart value
         body: >-
-          The Helm chart value <code>workloads</code> now supports the kinds <code>deployments.enabled</code>, <code>statefulSets.enabled</code>, and <code>replicaSets.enabled</code>.
-          By default, all three are enabled, but can be disabled by setting the corresponding value to <code>false</code>.
-          When disabled, the traffic-manager will ignore workloads of a corresponding kind, and Telepresence will not be able to intercept them.
+          The Helm chart value `workloads` now supports the kinds `deployments.enabled`, `statefulSets.enabled`, `replicaSets.enabled`.
+          and `rollouts.enabled`. All except `rollouts` are enabled by default. The traffic-manager will ignore workloads, and
+          Telepresence will not be able to intercept them, if the `enabled` of the corresponding kind is set to `false`.
   - version: 2.20.3
     date: 2024-11-18
     notes:
