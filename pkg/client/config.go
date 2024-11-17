@@ -682,11 +682,34 @@ func (g *TelepresenceAPI) merge(o *TelepresenceAPI) {
 	}
 }
 
-var defaultTelemount = DockerImage{ //nolint:gochecknoglobals // constant
+type Telemount DockerImage
+
+var defaultTelemount = Telemount{ //nolint:gochecknoglobals // constant
 	RegistryAPI: "ghcr.io/v2",
 	Registry:    "ghcr.io",
 	Namespace:   "telepresenceio",
 	Repository:  "telemount",
+}
+
+func (tm *Telemount) defaults() DefaultsAware {
+	return &defaultTelemount
+}
+
+func (tm *Telemount) IsZero() bool {
+	return *tm == defaultTelemount
+}
+
+func (tm *Telemount) MarshalJSONV2(out *jsontext.Encoder, opts json.Options) error {
+	return json.MarshalEncode(out, mapWithoutDefaults(tm), opts)
+}
+
+func (tm *Telemount) UnmarshalJSONV2(in *jsontext.Decoder, opts json.Options) error {
+	// Prevent that the original object is cleared when an empty object is decoded by passing the address
+	// of the pointer to the object. The unmarshal will then instead clear the pointer (wp becomes nil) and
+	// leave the underlying object intact. In other words, this code achieves "omitempty" during unmarshal.
+	type wt Telemount
+	wp := (*wt)(tm)
+	return json.UnmarshalDecode(in, &wp, opts)
 }
 
 const (
@@ -711,7 +734,7 @@ type Intercept struct {
 	AppProtocolStrategy k8sapi.AppProtocolStrategy `json:"appProtocolStrategy"`
 	DefaultPort         int                        `json:"defaultPort"`
 	UseFtp              bool                       `json:"useFtp"`
-	Telemount           DockerImage                `json:"telemount,omitzero"`
+	Telemount           Telemount                  `json:"telemount,omitzero"`
 }
 
 func (ic *Intercept) defaults() DefaultsAware {
