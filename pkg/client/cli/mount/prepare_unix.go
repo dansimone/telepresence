@@ -1,14 +1,14 @@
 //go:build !windows
 // +build !windows
 
-package intercept
+package mount
 
 import (
 	"os"
 	"path/filepath"
 )
 
-func PrepareMount(cwd string, mountPoint string) (string, error) {
+func prepare(cwd string, mountPoint string) (string, error) {
 	if mountPoint == "" {
 		return os.MkdirTemp("", "telfs-")
 	}

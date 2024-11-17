@@ -1,4 +1,4 @@
-package intercept
+package env
 
 import (
 	"testing"
@@ -6,101 +6,101 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEnvironmentSyntax_WriteEnv(t *testing.T) {
+func TestSyntax_WriteEntry(t *testing.T) {
 	tests := []struct {
 		name  string
-		e     EnvironmentSyntax
+		e     Syntax
 		key   string
 		value string
 		want  string
 	}{
 		{
 			`sh A=B C`,
-			envSyntaxSh,
+			SyntaxSh,
 			`A`,
 			`B C`,
 			`A='B C'`,
 		},
 		{
 			`sh A=B "C"`,
-			envSyntaxSh,
+			SyntaxSh,
 			`A`,
 			`B "C"`,
 			`A='B "C"'`,
 		},
 		{
 			`sh A="B C"`,
-			envSyntaxSh,
+			SyntaxSh,
 			`A`,
 			`"B C"`,
 			`A='"B C"'`,
 		},
 		{
 			`sh A=B 'C X'`,
-			envSyntaxSh,
+			SyntaxSh,
 			`A`,
 			`B 'C X'`,
 			`A='B '\''C X'\'`,
 		},
 		{
 			`compose A=B 'C X'`,
-			envSyntaxCompose,
+			SyntaxCompose,
 			`A`,
 			`B 'C X'`,
 			`A='B \'C X\''`,
 		},
 		{
 			`compose A=B\nC\t"D"`,
-			envSyntaxCompose,
+			SyntaxCompose,
 			`A`,
 			"B\nC\t\"D\"",
 			`A="B\nC\t\"D\""`,
 		},
 		{
 			`sh A='B C'`,
-			envSyntaxSh,
+			SyntaxSh,
 			`A`,
 			`'B C'`,
 			`A=\''B C'\'`,
 		},
 		{
 			`sh A=\"B\" \"C\"`,
-			envSyntaxSh,
+			SyntaxSh,
 			`A`,
 			`\"B\" \"C\"`,
 			`A='\"B\" \"C\"'`,
 		},
 		{
 			`ps A=B C`,
-			envSyntaxPS,
+			SyntaxPS,
 			`A`,
 			`B C`,
 			`$Env:A='B C'`,
 		},
 		{
 			`ps A='B C'`,
-			envSyntaxPS,
+			SyntaxPS,
 			`A`,
 			`'B C'`,
 			`$Env:A='''B C'''`,
 		},
 		{
 			`ps:export A='B C'`,
-			envSyntaxPSExport,
+			SyntaxPSExport,
 			`A`,
 			`'B C'`,
 			`[Environment]::SetEnvironmentVariable('A', '''B C''', 'User')`,
 		},
 		{
 			`ps:export A=B C`,
-			envSyntaxPSExport,
+			SyntaxPSExport,
 			`A`,
 			`B C`,
 			`[Environment]::SetEnvironmentVariable('A', 'B C', 'User')`,
 		},
 		{
 			`ps:export A="B C"`,
-			envSyntaxPSExport,
+			SyntaxPSExport,
 			`A`,
 			`"B C"`,
 			`[Environment]::SetEnvironmentVariable('A', '"B C"', 'User')`,
@@ -108,7 +108,7 @@ func TestEnvironmentSyntax_WriteEnv(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := tt.e.WriteEnv(tt.key, tt.value)
+			r, err := tt.e.WriteEntry(tt.key, tt.value)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, r)
 		})

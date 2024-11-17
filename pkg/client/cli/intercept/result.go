@@ -10,6 +10,7 @@ import (
 	"github.com/telepresenceio/telepresence/rpc/v2/connector"
 	"github.com/telepresenceio/telepresence/rpc/v2/manager"
 	"github.com/telepresenceio/telepresence/v2/pkg/errcat"
+	"github.com/telepresenceio/telepresence/v2/pkg/ioutil"
 )
 
 func Result(r *connector.InterceptResult, err error) error {
@@ -52,10 +53,10 @@ func Result(r *connector.InterceptResult, err error) error {
 			break
 		}
 		st := &strings.Builder{}
-		fmt.Fprintf(st, "Found more than one possible match:")
+		ioutil.Printf(st, "Found more than one possible match:")
 		for idx := range matches {
 			match := &matches[idx]
-			fmt.Fprintf(st, "\n%4d: %s.%s", idx+1, match.Name, match.Namespace)
+			ioutil.Printf(st, "\n%4d: %s.%s", idx+1, match.Name, match.Namespace)
 		}
 		msg = st.String()
 	case common.InterceptError_FAILED_TO_ESTABLISH:

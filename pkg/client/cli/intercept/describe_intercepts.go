@@ -7,7 +7,7 @@ import (
 	"github.com/telepresenceio/telepresence/rpc/v2/manager"
 )
 
-func DescribeIntercepts(ctx context.Context, iis []*manager.InterceptInfo, volumeMountsPrevented string, debug bool) string {
+func DescribeIntercepts(ctx context.Context, iis []*manager.InterceptInfo, volumeMountsPrevented error, debug bool) string {
 	sb := strings.Builder{}
 	sb.WriteString("intercepted")
 	for _, ii := range iis {
@@ -17,7 +17,7 @@ func DescribeIntercepts(ctx context.Context, iis []*manager.InterceptInfo, volum
 	return sb.String()
 }
 
-func describeIntercept(ctx context.Context, ii *manager.InterceptInfo, volumeMountsPrevented string, debug bool, sb *strings.Builder) {
+func describeIntercept(ctx context.Context, ii *manager.InterceptInfo, volumeMountsPrevented error, debug bool, sb *strings.Builder) {
 	info := NewInfo(ctx, ii, volumeMountsPrevented)
 	info.debug = debug
 	_, _ = info.WriteTo(sb)

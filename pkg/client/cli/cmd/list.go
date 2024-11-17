@@ -165,7 +165,7 @@ func (s *listCommand) printList(ctx context.Context, workloads []*connector.Work
 
 	state := func(workload *connector.WorkloadInfo) string {
 		if iis := workload.InterceptInfos; len(iis) > 0 {
-			return intercept.DescribeIntercepts(ctx, iis, "", s.debug)
+			return intercept.DescribeIntercepts(ctx, iis, nil, s.debug)
 		}
 		if workload.NotInterceptableReason == "Progressing" {
 			return "progressing..."

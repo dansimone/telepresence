@@ -8,7 +8,11 @@ import (
 
 	"github.com/blang/semver/v4"
 	"google.golang.org/grpc"
+	grpcCodes "google.golang.org/grpc/codes"
+	grpcStatus "google.golang.org/grpc/status"
 
+	"github.com/datawire/dlib/dexec"
+	"github.com/datawire/dlib/dlog"
 	"github.com/telepresenceio/telepresence/rpc/v2/connector"
 )
 
@@ -23,6 +27,7 @@ type UserClient interface {
 	Name() string
 	Semver() semver.Version
 	SetDaemonID(*Identifier)
+	AddHandler(ctx context.Context, id string, cmd *dexec.Cmd, containerName string) error
 }
 
 type userClient struct {
@@ -114,4 +119,27 @@ func (u *userClient) DaemonPort() int {
 
 func (u *userClient) SetDaemonID(daemonID *Identifier) {
 	u.daemonID = daemonID
+}
+
+func (u *userClient) AddHandler(ctx context.Context, id string, cmd *dexec.Cmd, containerName string) error {
+	// setup cleanup for the handler process
+	ior := connector.Interceptor{
+		InterceptId:   id,
+		Pid:           int32(cmd.Process.Pid),
+		ContainerName: containerName,
+	}
+
+	// Send info about the pid and intercept id to the traffic-manager so that it kills
+	// the process if it receives a leave of quit call.
+	if _, err := u.AddInterceptor(ctx, &ior); err != nil {
+		if grpcStatus.Code(err) == grpcCodes.Canceled {
+			// Deactivation was caused by a disconnect
+			err = nil
+		} else {
+			dlog.Errorf(ctx, "error adding process with pid %d as interceptor: %v", ior.Pid, err)
+		}
+		_ = cmd.Process.Kill()
+		return err
+	}
+	return nil
 }

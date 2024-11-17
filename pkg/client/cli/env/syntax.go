@@ -1,28 +1,37 @@
-package intercept
+package env
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"os"
 	"slices"
+	"sort"
 	"strings"
 
+	"github.com/go-json-experiment/json"
+	"github.com/go-json-experiment/json/jsontext"
+
+	"github.com/telepresenceio/telepresence/v2/pkg/errcat"
 	"github.com/telepresenceio/telepresence/v2/pkg/shellquote"
 )
 
-type EnvironmentSyntax int
+type Syntax int
 
 const (
-	envSyntaxDocker EnvironmentSyntax = iota
-	envSyntaxCompose
-	envSyntaxSh
-	envSyntaxShExport
-	envSyntaxCsh
-	envSyntaxCshExport
-	envSyntaxPS
-	envSyntaxPSExport
-	envSyntaxCmd
+	SyntaxDocker Syntax = iota
+	SyntaxCompose
+	SyntaxSh
+	SyntaxShExport
+	SyntaxCsh
+	SyntaxCshExport
+	SyntaxPS
+	SyntaxPSExport
+	SyntaxCmd
+	SyntaxJSON
 )
 
-var envSyntaxNames = []string{ //nolint:gochecknoglobals // constant
+var syntaxNames = []string{ //nolint:gochecknoglobals // constant
 	"docker",
 	"compose",
 	"sh",
@@ -32,62 +41,121 @@ var envSyntaxNames = []string{ //nolint:gochecknoglobals // constant
 	"ps",
 	"ps:export",
 	"cmd",
+	"json",
 }
 
-func EnvSyntaxUsage() string {
-	return `"docker", "compose", "sh", "csh", "cmd", and "ps"; where "sh", "csh", and "ps" can be suffixed with ":export"`
+func SyntaxUsage() string {
+	return `"docker", "compose", "sh", "csh", "cmd", "json", and "ps"; where "sh", "csh", and "ps" can be suffixed with ":export"`
 }
 
 // Set uses a pointer receiver intentionally, even though the internal type is int, because
 // it must change the actual receiver value.
-func (e *EnvironmentSyntax) Set(n string) error {
-	ex := slices.Index(envSyntaxNames, n)
+//
+//goland:noinspection GoMixedReceiverTypes
+func (e *Syntax) Set(n string) error {
+	ex := slices.Index(syntaxNames, n)
 	if ex < 0 {
 		return fmt.Errorf("invalid env syntax: %s", n)
 	}
-	*e = EnvironmentSyntax(ex)
+	*e = Syntax(ex)
 	return nil
 }
 
-func (e EnvironmentSyntax) String() string {
-	if e >= 0 && e <= envSyntaxCmd {
-		return envSyntaxNames[e]
+//goland:noinspection GoMixedReceiverTypes
+func (e Syntax) String() string {
+	if e >= 0 && e <= SyntaxCmd {
+		return syntaxNames[e]
 	}
 	return "unknown"
 }
 
-func (e EnvironmentSyntax) Type() string {
+//goland:noinspection GoMixedReceiverTypes
+func (e Syntax) Type() string {
 	return "string"
 }
 
-// WriteEnv will write the environment variable in a form that will make the target shell parse it correctly and verbatim.
-func (e EnvironmentSyntax) WriteEnv(k, v string) (r string, err error) {
+//goland:noinspection GoMixedReceiverTypes
+func (e Syntax) writeFile(fileName string, env map[string]string) error {
+	var file *os.File
+	if fileName == "-" {
+		file = os.Stdout
+	} else {
+		var err error
+		file, err = os.Create(fileName)
+		if err != nil {
+			return errcat.NoDaemonLogs.Newf("failed to create environment file %q: %w", fileName, err)
+		}
+	}
+	return e.WriteToFileAndClose(file, env)
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (e Syntax) WriteToFileAndClose(file *os.File, env map[string]string) (err error) {
+	if e == SyntaxJSON {
+		data, err := json.Marshal(env, jsontext.WithIndent("  "))
+		if err != nil {
+			// Creating JSON from a map[string]string should never fail
+			panic(err)
+		}
+		_, err = file.Write(data)
+		return err
+	}
+
+	defer file.Close()
+	w := bufio.NewWriter(file)
+
+	keys := make([]string, len(env))
+	i := 0
+	for k := range env {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		r, err := e.WriteEntry(k, env[k])
+		if err != nil {
+			return err
+		}
+		if _, err = fmt.Fprintln(w, r); err != nil {
+			return err
+		}
+	}
+	return w.Flush()
+}
+
+// WriteEntry will write the environment variable in a form that will make the target shell parse it correctly and verbatim.
+//
+//goland:noinspection GoMixedReceiverTypes
+func (e Syntax) WriteEntry(k, v string) (r string, err error) {
 	switch e {
-	case envSyntaxDocker:
+	case SyntaxDocker:
 		// Docker does not accept multi-line environments
 		if strings.IndexByte(v, '\n') >= 0 {
 			return "", fmt.Errorf("docker run/build does not support multi-line environment values: key: %s, value %s", k, v)
 		}
 		r = fmt.Sprintf("%s=%s", k, v)
-	case envSyntaxCompose:
+	case SyntaxCompose:
 		r = fmt.Sprintf("%s=%s", k, quoteCompose(v))
-	case envSyntaxSh:
+	case SyntaxSh:
 		r = fmt.Sprintf("%s=%s", k, shellquote.Unix(v))
-	case envSyntaxShExport:
+	case SyntaxShExport:
 		r = fmt.Sprintf("export %s=%s", k, shellquote.Unix(v))
-	case envSyntaxCsh:
+	case SyntaxCsh:
 		r = fmt.Sprintf("set %s=%s", k, shellquote.Unix(v))
-	case envSyntaxCshExport:
+	case SyntaxCshExport:
 		r = fmt.Sprintf("setenv %s %s", k, shellquote.Unix(v))
-	case envSyntaxPS:
+	case SyntaxPS:
 		r = fmt.Sprintf("$Env:%s=%s", k, quotePS(v))
-	case envSyntaxPSExport:
+	case SyntaxPSExport:
 		r = fmt.Sprintf("[Environment]::SetEnvironmentVariable(%s, %s, 'User')", quotePS(k), quotePS(v))
-	case envSyntaxCmd:
+	case SyntaxCmd:
 		if strings.IndexByte(v, '\n') >= 0 {
 			return "", fmt.Errorf("cmd does not support multi-line environment values: key: %s, value %s", k, v)
 		}
 		r = fmt.Sprintf("set %s=%s", k, v)
+	case SyntaxJSON:
+		return "", errors.New("WriteEntry isn't supported for json")
 	}
 	return r, nil
 }

@@ -1,4 +1,4 @@
-package intercept
+package mount
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/telepresenceio/telepresence/v2/pkg/errcat"
 )
 
-func PrepareMount(_ string, mountPoint string) (string, error) {
+func prepare(_ string, mountPoint string) (string, error) {
 	var err error
 	if mountPoint == "" {
 		// Find a free drive letter. Background at T, loop around and skip C and D,
