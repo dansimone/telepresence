@@ -103,9 +103,9 @@ func (c *configWatcher) isRolloutNeeded(ctx context.Context, wl k8sapi.Workload,
 		return false
 	}
 	if ia, ok := podMeta.GetAnnotations()[agentconfig.InjectAnnotation]; ok {
-		// Annotation controls injection, so no explicit rollout is needed unless the deployment was added after the traffic-manager.
+		// Annotation controls injection, so no explicit rollout is needed unless the deployment was added before the traffic-manager.
 		// If the annotation changes, there will be an implicit rollout anyway.
-		if podMeta.GetCreationTimestamp().After(c.startedAt) {
+		if wl.GetCreationTimestamp().After(c.startedAt) {
 			dlog.Debugf(ctx, "Rollout of %s.%s is not necessary. Pod template has inject annotation %s",
 				wl.GetName(), wl.GetNamespace(), ia)
 			return false

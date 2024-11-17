@@ -276,16 +276,16 @@ func StartServices(ctx context.Context, g *dgroup.Group, config Config, srv Stat
 			return sftpServer(ctx, sftpPortCh)
 		})
 		g.Go("ftp-server", func(ctx context.Context) error {
-			if iputil.IsIpV6Addr(config.PodIP()) {
-				return ftp.Start(ctx, "", agentconfig.ExportsMountPoint, ftpPortCh)
-			} else {
-				return ftp.Start(ctx, config.PodIP(), agentconfig.ExportsMountPoint, ftpPortCh)
+			publicHost := ""
+			if !iputil.IsIpV6Addr(config.PodIP()) {
+				publicHost = config.PodIP()
 			}
+			return ftp.Start(ctx, publicHost, agentconfig.ExportsMountPoint, ftpPortCh)
 		})
 	} else {
 		close(sftpPortCh)
 		close(ftpPortCh)
-		dlog.Info(ctx, "Not starting sftp-server because there's nothing to mount")
+		dlog.Info(ctx, "Not starting ftp and sftp servers because there's nothing to mount")
 	}
 	grpcPort, err := waitForPort(ctx, grpcPortCh)
 	if err != nil {
