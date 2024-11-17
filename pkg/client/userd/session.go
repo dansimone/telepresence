@@ -53,7 +53,7 @@ type Session interface {
 	RemoveIntercept(context.Context, string) error
 	NewCreateInterceptRequest(*manager.InterceptSpec) *manager.CreateInterceptRequest
 
-	AddInterceptor(string, *rpc.Interceptor) error
+	AddInterceptor(context.Context, string, *rpc.Interceptor) error
 	RemoveInterceptor(string) error
 	ClearIntercepts(context.Context) error
 

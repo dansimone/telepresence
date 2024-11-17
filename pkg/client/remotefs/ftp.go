@@ -27,13 +27,13 @@ func NewFTPMounter(client rpc.FuseFTPClient, iceptWG *sync.WaitGroup) Mounter {
 	return &ftpMounter{client: client, iceptWG: iceptWG}
 }
 
-func (m *ftpMounter) Start(ctx context.Context, id, clientMountPoint, mountPoint string, podIP net.IP, port uint16, ro bool) error {
+func (m *ftpMounter) Start(ctx context.Context, workload, container, clientMountPoint, mountPoint string, podIP net.IP, port uint16, ro bool) error {
 	// The FTPClient and the NewHost must be controlled by the intercept context and not by the pod context that
 	// is passed as a parameter, because those services will survive pod changes.
 	addr := netip.MustParseAddrPort(iputil.JoinIpPort(podIP, port))
 	if m.id == nil {
 		cfg := client.GetConfig(ctx)
-		dlog.Infof(ctx, "Mounting FTP file system for intercept %q (address %s) at %q", id, addr, clientMountPoint)
+		dlog.Infof(ctx, "Mounting FTP file system for container %s[%s] (address %s) at %q", workload, container, addr, clientMountPoint)
 		// FTPs remote mount is already relative to the agentconfig.ExportsMountPoint
 		rmp := strings.TrimPrefix(mountPoint, agentconfig.ExportsMountPoint)
 		cc, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -60,17 +60,17 @@ func (m *ftpMounter) Start(ctx context.Context, id, clientMountPoint, mountPoint
 			<-ctx.Done()
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cfg.Timeouts().Get(client.TimeoutFtpShutdown))
 			defer cancel()
-			dlog.Debugf(ctx, "Unmounting FTP file system for intercept %q (address %s) at %q", id, addr, clientMountPoint)
+			dlog.Debugf(ctx, "Unmounting FTP file system for container %s[%s] (address %s) at %q", workload, container, addr, clientMountPoint)
 			if _, err = m.client.Unmount(ctx, m.id); err != nil {
 				dlog.Errorf(ctx, "Unmount of %s failed: %v", clientMountPoint, err)
 			}
 		}()
-		dlog.Infof(ctx, "File system for intercept %q (address %s) successfully mounted at %q", id, addr, clientMountPoint)
+		dlog.Infof(ctx, "File system for container %s[%s] (address %s) successfully mounted at %q", workload, container, addr, clientMountPoint)
 		return nil
 	}
 
 	// Assign a new address to the FTP client. This kills any open connections but leaves the FUSE driver intact
-	dlog.Infof(ctx, "Switching remote address to %s for FTP file system for intercept %q at %q", addr, id, clientMountPoint)
+	dlog.Infof(ctx, "Switching remote address to %s for FTP file system for workload container %s[%s] at %q", addr, workload, container, clientMountPoint)
 	_, err := m.client.SetFtpServer(ctx, &rpc.SetFtpServerRequest{
 		FtpServer: &rpc.AddressAndPort{
 			Ip:   podIP,

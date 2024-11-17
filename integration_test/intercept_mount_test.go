@@ -98,7 +98,7 @@ func (s *interceptMountSuite) Test_InterceptMount() {
 }
 
 func (s *singleServiceSuite) Test_InterceptMountRelative() {
-	if runtime.GOOS == "darwin" {
+	if s.IsCI() && runtime.GOOS == "darwin" {
 		s.T().Skip("Mount tests don't run on darwin due to macFUSE issues")
 	}
 	if runtime.GOOS == "windows" {
@@ -136,11 +136,13 @@ func (s *singleServiceSuite) Test_InterceptMountRelative() {
 }
 
 func (s *singleServiceSuite) Test_InterceptDetailedOutput() {
+	if s.IsCI() && runtime.GOOS == "darwin" {
+		s.T().Skip("Mount tests don't run on darwin due to macFUSE issues")
+	}
 	ctx := s.Context()
 	port, cancel := itest.StartLocalHttpEchoServer(ctx, s.ServiceName())
 	defer cancel()
 	stdout := itest.TelepresenceOk(ctx, "intercept",
-		"--mount", "false",
 		"--port", strconv.Itoa(port),
 		"--detailed-output",
 		"--output", "json",
@@ -166,7 +168,7 @@ func (s *singleServiceSuite) Test_InterceptDetailedOutput() {
 }
 
 func (s *singleServiceSuite) Test_NoInterceptorResponse() {
-	if runtime.GOOS == "darwin" {
+	if s.IsCI() && runtime.GOOS == "darwin" {
 		s.T().Skip("Mount tests don't run on darwin due to macFUSE issues")
 	}
 	if runtime.GOOS == "windows" {

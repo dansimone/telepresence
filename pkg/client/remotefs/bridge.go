@@ -28,7 +28,7 @@ func NewBridgeMounter(sessionID string, managerClient manager.ManagerClient, loc
 	}
 }
 
-func (m *bridgeMounter) Start(ctx context.Context, _, _, _ string, podIP net.IP, port uint16, _ bool) error {
+func (m *bridgeMounter) Start(ctx context.Context, _, _, _, _ string, podIP net.IP, port uint16, _ bool) error {
 	ctx = dgroup.WithGoroutineName(ctx, iputil.JoinIpPort(podIP, port))
 	lc := &net.ListenConfig{}
 	la := fmt.Sprintf(":%d", m.localPort)

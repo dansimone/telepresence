@@ -167,13 +167,21 @@ func (s *dockerDaemonSuite) Test_DockerRun_DockerDaemon() {
 
 	runDockerRun := func(ctx context.Context, wch chan<- struct{}) {
 		defer close(wch)
-		_, _, _ = itest.Telepresence(ctx, "intercept", "--mount", "false", svc,
+		so, se, err := itest.Telepresence(ctx, "intercept", "--mount", "false", svc,
 			"--docker-run", "--", "--rm", "-v", abs+":/usr/src/app", tag)
+		dlog.Info(ctx, so)
+		if se != "" {
+			dlog.Error(ctx, se)
+		}
+		if err != nil {
+			dlog.Error(ctx, err.Error())
+		}
 	}
 
 	assertInterceptResponse := func(ctx context.Context) {
 		s.Eventually(func() bool {
 			stdout, _, err := itest.Telepresence(ctx, "list", "--intercepts")
+			dlog.Info(ctx, stdout)
 			return err == nil && strings.Contains(stdout, svc+": intercepted")
 		}, 30*time.Second, 3*time.Second)
 
