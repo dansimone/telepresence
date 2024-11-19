@@ -247,6 +247,11 @@ func podIPs(ctx context.Context, pod *corev1.Pod) []netip.Addr {
 	if pod == nil {
 		return nil
 	}
+	if pod.Namespace == "kube-system" {
+		// If the user wants the pod subnet of this namespace mapped, they'll need to add it manually.
+		// Auto-generating it here will often cause problems. Especially when running Kubernetes locally.
+		return nil
+	}
 	status := pod.Status
 	podIPs := status.PodIPs
 	if len(podIPs) == 0 {
