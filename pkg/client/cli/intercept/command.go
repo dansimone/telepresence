@@ -72,7 +72,7 @@ func (c *Command) AddFlags(cmd *cobra.Command) {
 		`Use <port>/UDP for UDP ports`)
 
 	c.EnvFlags.AddFlags(flagSet)
-	c.MountFlags.AddFlags(flagSet)
+	c.MountFlags.AddFlags(flagSet, false)
 	c.DockerFlags.AddFlags(flagSet, "intercepted")
 
 	flagSet.StringP("namespace", "n", "", "If present, the namespace scope for this CLI request")

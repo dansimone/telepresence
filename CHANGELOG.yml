@@ -61,6 +61,11 @@ items:
           An ingest requires a traffic-agent to be installed in the pods of the targeted workload. Beyond that, it's
           a client-side operation. This allows developers to have multiple simultaneous ingests on the same container.
       - type: feature
+        title: Mount everything read-only during intercept
+        body: >-
+          It is now possible to append ":ro" to the intercept `--mount` flag value. This ensures that all remote volumes
+          that the intercept mounts are read-only.
+      - type: feature
         title: Unify client configuration
         body: >-
           Previously, client configuration was divided between the config.yml file and a Kubernetes extension. DNS and

@@ -75,6 +75,7 @@ func (s *state) CreateRequest(ctx context.Context) (*connector.CreateInterceptRe
 		ExtendedInfo:   s.ExtendedInfo,
 		LocalMountPort: int32(s.MountFlags.LocalMountPort),
 		MountPoint:     s.MountFlags.Mount,
+		MountReadOnly:  s.MountFlags.ReadOnly,
 	}
 
 	spec.ServiceName = s.ServiceName
@@ -232,7 +233,7 @@ func (s *state) create(ctx context.Context) (acquired bool, err error) {
 		intercept.SftpPort = 0
 	}
 
-	s.info = NewInfo(ctx, intercept, s.mountError)
+	s.info = NewInfo(ctx, intercept, s.MountFlags.ReadOnly, s.mountError)
 	if !s.Silent {
 		if detailedOutput {
 			output.Object(ctx, s.info, true)

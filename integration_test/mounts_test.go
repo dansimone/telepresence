@@ -99,6 +99,53 @@ func (s *mountsSuite) TearDownSuite() {
 	}
 }
 
+func (s *mountsSuite) Test_MountWrite() {
+	if runtime.GOOS != "linux" {
+		s.T().SkipNow()
+	}
+
+	ctx := s.Context()
+	s.ApplyApp(ctx, "hello-w-volumes", "deploy/hello")
+	defer s.DeleteSvcAndWorkload(ctx, "deploy", "hello")
+
+	mountPoint := filepath.Join(s.T().TempDir(), "mnt")
+	itest.TelepresenceOk(ctx, "intercept", "hello", "--mount", mountPoint, "--port", "80:80")
+	time.Sleep(2 * time.Second)
+
+	rq := s.Require()
+
+	content := "hello world\n"
+	path := filepath.Join(mountPoint, "data", "hello.txt")
+	rq.NoError(os.WriteFile(path, []byte(content), 0o644))
+	itest.TelepresenceOk(ctx, "leave", "hello")
+	time.Sleep(2 * time.Second)
+
+	mountPoint = filepath.Join(s.T().TempDir(), "data")
+	itest.TelepresenceOk(ctx, "intercept", "hello", "--mount", mountPoint, "--port", "80:80")
+	defer itest.TelepresenceDisconnectOk(ctx)
+
+	time.Sleep(2 * time.Second)
+	path = filepath.Join(mountPoint, "data", "hello.txt")
+	data, err := os.ReadFile(path)
+	rq.NoError(err)
+	rq.Equal(content, string(data))
+}
+
+func (s *mountsSuite) Test_MountReadOnly() {
+	if runtime.GOOS != "linux" {
+		s.T().SkipNow()
+	}
+	ctx := s.Context()
+	s.ApplyApp(ctx, "hello-w-volumes", "deploy/hello")
+	defer s.DeleteSvcAndWorkload(ctx, "deploy", "hello")
+
+	mountPoint := filepath.Join(s.T().TempDir(), "mnt")
+	itest.TelepresenceOk(ctx, "intercept", "hello", "--mount", mountPoint+":ro", "--port", "80:80")
+	defer itest.TelepresenceDisconnectOk(ctx)
+	time.Sleep(2 * time.Second)
+	s.Require().Error(os.WriteFile(filepath.Join(mountPoint, "data", "hello.txt"), []byte("hello world\n"), 0o644))
+}
+
 // Test_CollidingMounts tests that multiple mounts from several containers are managed correctly
 // by the traffic-agent and that an intercept of a container mounts the expected volumes.
 //

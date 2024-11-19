@@ -36,7 +36,7 @@ func (c *Command) AddFlags(cmd *cobra.Command) {
 		`Use <port>/UDP for UDP ports`)
 
 	c.EnvFlags.AddFlags(flagSet)
-	c.MountFlags.AddFlags(flagSet)
+	c.MountFlags.AddFlags(flagSet, true)
 	c.DockerFlags.AddFlags(flagSet, "ingested")
 	flagSet.StringVar(&c.WaitMessage, "wait-message", "", "Message to print when ingest handler has started")
 }

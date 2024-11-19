@@ -88,7 +88,8 @@ type awaitIntercept struct {
 	// the mount to take place in a host
 	mountPort int32
 
-	waitCh chan<- interceptResult
+	readOnly bool
+	waitCh   chan<- interceptResult
 }
 
 func (ic *intercept) localPorts() []string {
@@ -259,6 +260,7 @@ func (s *session) setCurrentIntercepts(ctx context.Context, iis []*manager.Inter
 			if aw, ok := s.interceptWaiters[ii.Spec.Name]; ok {
 				ic.ClientMountPoint = aw.mountPoint
 				ic.localMountPort = aw.mountPort
+				ic.readOnly = aw.readOnly
 			}
 		}
 		intercepts[ii.Id] = ic
@@ -447,6 +449,7 @@ func (s *session) AddIntercept(c context.Context, ir *rpc.CreateInterceptRequest
 	s.interceptWaiters[spec.Name] = &awaitIntercept{
 		mountPoint: ir.MountPoint,
 		mountPort:  ir.LocalMountPort,
+		readOnly:   ir.MountReadOnly,
 		waitCh:     waitCh,
 	}
 	s.currentInterceptsLock.Unlock()

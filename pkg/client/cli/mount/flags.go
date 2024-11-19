@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -21,15 +22,20 @@ type Flags struct {
 	LocalMountPort uint16 // --local-mount-port
 	Mount          string // --mount // "true", "false", or desired mount point
 	Enabled        bool
+	ReadOnly       bool
 }
 
-func (f *Flags) AddFlags(flagSet *pflag.FlagSet) {
-	flagSet.StringVar(&f.Mount, "mount", "true", ``+
-		`The absolute path for the root directory where volumes will be mounted, $TELEPRESENCE_ROOT. Use "true" to `+
-		`have Telepresence pick a random mount point (default). Use "false" to disable filesystem mounting entirely.`)
+func (f *Flags) AddFlags(flagSet *pflag.FlagSet, forceReadOnly bool) {
+	mountText := `The absolute path for the root directory where volumes will be mounted, $TELEPRESENCE_ROOT. Use "true" to ` +
+		`have Telepresence pick a random mount point (default). Use "false" to disable filesystem mounting entirely.`
+	if !forceReadOnly {
+		mountText += ` Append ":ro" to mount everything read-only.`
+	}
+	flagSet.StringVar(&f.Mount, "mount", "true", mountText)
 
 	flagSet.Uint16Var(&f.LocalMountPort, "local-mount-port", 0,
 		`Do not mount remote directories. Instead, expose this port on localhost to an external mounter`)
+	f.ReadOnly = forceReadOnly
 }
 
 func (f *Flags) Validate(cmd *cobra.Command) error {
@@ -41,6 +47,10 @@ func (f *Flags) Validate(cmd *cobra.Command) error {
 		f.Mount = "" // Get rid of the default string "true"
 		f.Enabled = true
 	} else if len(f.Mount) > 0 {
+		if strings.HasSuffix(f.Mount, ":ro") {
+			f.ReadOnly = true
+			f.Mount = f.Mount[:len(f.Mount)-3]
+		}
 		doMount, err := strconv.ParseBool(f.Mount)
 		if err != nil {
 			// Not a boolean flag. Must be a path then

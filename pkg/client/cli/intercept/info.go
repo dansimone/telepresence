@@ -67,13 +67,13 @@ func PreviewURL(pu string) string {
 	return pu
 }
 
-func NewInfo(ctx context.Context, ii *manager.InterceptInfo, mountError error) *Info {
+func NewInfo(ctx context.Context, ii *manager.InterceptInfo, ro bool, mountError error) *Info {
 	spec := ii.Spec
 	var m *mount.Info
 	if mountError != nil {
 		m = &mount.Info{Error: mountError.Error()}
 	} else if ii.MountPoint != "" {
-		m = mount.NewInfo(ctx, ii.Environment, ii.FtpPort, ii.SftpPort, ii.ClientMountPoint, ii.MountPoint, ii.PodIp, false)
+		m = mount.NewInfo(ctx, ii.Environment, ii.FtpPort, ii.SftpPort, ii.ClientMountPoint, ii.MountPoint, ii.PodIp, ro)
 	}
 	info := &Info{
 		ID:            ii.Id,

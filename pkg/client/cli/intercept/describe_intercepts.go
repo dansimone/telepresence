@@ -29,7 +29,7 @@ func DescribeIntercepts(ctx context.Context, iis []*manager.InterceptInfo, igs [
 }
 
 func describeIntercept(ctx context.Context, ii *manager.InterceptInfo, volumeMountsPrevented error, debug bool, sb *strings.Builder) {
-	info := NewInfo(ctx, ii, volumeMountsPrevented)
+	info := NewInfo(ctx, ii, false, volumeMountsPrevented)
 	info.debug = debug
 	_, _ = info.WriteTo(sb)
 }

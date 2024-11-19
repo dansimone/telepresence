@@ -274,6 +274,7 @@ message CreateInterceptRequest {
   bool is_pod_daemon = 4;
   bytes extended_info = 5;
   int32 local_mount_port = 6;
+  bool mount_read_only = 7;
 }
 
 message ListRequest {

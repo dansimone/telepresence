@@ -110,6 +110,9 @@ spec:
         - name: nginx-config
           configMap:
             name: nginx
+        - name: data
+          emptyDir:
+            sizeLimit: 1Gi
       containers:
         - name: hello-container-1
           image: nginx
@@ -128,6 +131,8 @@ spec:
               name: hello-secret-volume-1
             - mountPath: /etc/nginx/templates/
               name: nginx-config
+            - mountPath: /data
+              name: data
           livenessProbe:
             httpGet:
               path: /
@@ -151,3 +156,5 @@ spec:
               name: hello-secret-volume-2
             - mountPath: /etc/nginx/templates/
               name: nginx-config
+            - mountPath: /data
+              name: data

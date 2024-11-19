@@ -31,9 +31,13 @@ func (m *ftpMounter) Start(ctx context.Context, workload, container, clientMount
 	// The FTPClient and the NewHost must be controlled by the intercept context and not by the pod context that
 	// is passed as a parameter, because those services will survive pod changes.
 	addr := netip.MustParseAddrPort(iputil.JoinIpPort(podIP, port))
+	roTxt := ""
+	if ro {
+		roTxt = " read-only"
+	}
 	if m.id == nil {
 		cfg := client.GetConfig(ctx)
-		dlog.Infof(ctx, "Mounting FTP file system for container %s[%s] (address %s) at %q", workload, container, addr, clientMountPoint)
+		dlog.Infof(ctx, "Mounting FTP file system for container %s[%s] (address %s)%s at %q", workload, container, addr, roTxt, clientMountPoint)
 		// FTPs remote mount is already relative to the agentconfig.ExportsMountPoint
 		rmp := strings.TrimPrefix(mountPoint, agentconfig.ExportsMountPoint)
 		cc, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -65,7 +69,7 @@ func (m *ftpMounter) Start(ctx context.Context, workload, container, clientMount
 				dlog.Errorf(ctx, "Unmount of %s failed: %v", clientMountPoint, err)
 			}
 		}()
-		dlog.Infof(ctx, "File system for container %s[%s] (address %s) successfully mounted at %q", workload, container, addr, clientMountPoint)
+		dlog.Infof(ctx, "File system for container %s[%s] (address %s) successfully mounted%s at %q", workload, container, addr, roTxt, clientMountPoint)
 		return nil
 	}
 
