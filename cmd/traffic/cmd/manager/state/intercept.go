@@ -248,6 +248,28 @@ func updateSidecar(sce agentconfig.SidecarExt, cm *core.ConfigMap, n string) (bo
 	return false, nil
 }
 
+func (s *state) waitForAgentDepartures(ctx context.Context, wl k8sapi.Workload) error {
+	filter := func(s string, info *managerrpc.AgentInfo) bool {
+		return info.Kind == wl.GetKind() && info.Name == wl.GetName() && info.Namespace == wl.GetNamespace()
+	}
+	if len(s.agents.LoadAllMatching(filter)) == 0 {
+		return nil
+	}
+	dlog.Debugf(ctx, "Waiting for deleted %s.%s agents to depart", wl.GetName(), wl.GetNamespace())
+	agCh := s.agents.SubscribeSubset(ctx, filter)
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case as, ok := <-agCh:
+			if ok && len(as.State) > 0 {
+				continue
+			}
+		}
+		return nil
+	}
+}
+
 func (s *state) getOrCreateAgentConfig(
 	ctx context.Context,
 	wl k8sapi.Workload,
@@ -293,23 +315,8 @@ func (s *state) getOrCreateAgentConfig(
 
 			// If we don't have an entry for the workload in the config-map, then all current agents for that
 			// workload are invalid, and we'll have to wait for them to be removed.
-			filter := func(s string, info *managerrpc.AgentInfo) bool {
-				return info.Kind == wl.GetKind() && info.Name == wl.GetName() && info.Namespace == wl.GetNamespace()
-			}
-			if len(s.agents.LoadAllMatching(filter)) > 0 {
-				dlog.Debugf(ctx, "Waiting for deleted %s.%s agents to depart", wl.GetName(), wl.GetNamespace())
-				agCh := s.agents.SubscribeSubset(ctx, filter)
-				for {
-					select {
-					case <-ctx.Done():
-						return false, ctx.Err()
-					case as, ok := <-agCh:
-						if ok && len(as.State) > 0 {
-							continue
-						}
-					}
-					break
-				}
+			if err = s.waitForAgentDepartures(ctx, wl); err != nil {
+				return false, err
 			}
 			doUpdate = true
 		}
