@@ -9,6 +9,12 @@
 This update introduces a `--container <name>` option to the intercept command. While this option doesn't influence the port selection, it guarantees that the environment variables and mounts propagated to the client originate from the specified container. Additionally, if the `--replace` option is used, it ensures that this container is replaced.
 </div>
 
+## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">Added ingest command</div></div>
+<div style="margin-left: 15px">
+
+The new `telepresence ingest` command is similar to `telepresence intercept` in that it will make volume mounts and environment of the targeted container available locally, but it will ensure that the locally mounted volumes are read-only and not redirect any traffic that is routed to that container. Multiple simultaneous ingests are possible, because they will never conflict.
+</div>
+
 ## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">[Unify client configuration](https://telepresence.io/docs/reference/config)</div></div>
 <div style="margin-left: 15px">
 

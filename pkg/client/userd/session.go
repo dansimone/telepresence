@@ -95,6 +95,9 @@ type Session interface {
 	Remain(ctx context.Context) error
 	Epilog(ctx context.Context)
 	Done() <-chan struct{}
+	Ingest(context.Context, *rpc.IngestRequest) (*rpc.IngestInfo, error)
+	GetIngest(*rpc.IngestIdentifier) (*rpc.IngestInfo, error)
+	LeaveIngest(context.Context, *rpc.IngestIdentifier) (*rpc.IngestInfo, error)
 }
 
 type NewSessionFunc func(context.Context, ConnectRequest, *client.Kubeconfig) (context.Context, Session, *connector.ConnectInfo)

@@ -66,6 +66,7 @@ type UserDaemonStatus struct {
 	Namespace         string                   `json:"namespace,omitempty"`
 	ManagerNamespace  string                   `json:"manager_namespace,omitempty"`
 	MappedNamespaces  []string                 `json:"mapped_namespaces,omitempty"`
+	Ingests           []ConnectStatusIngest    `json:"ingests,omitempty"`
 	Intercepts        []ConnectStatusIntercept `json:"intercepts,omitempty"`
 	versionName       string
 }
@@ -81,6 +82,12 @@ type TrafficManagerStatus struct {
 	Version      string `json:"version,omitempty"`
 	TrafficAgent string `json:"traffic_agent,omitempty"`
 	extendedInfo ioutil.KeyValueProvider
+}
+
+type ConnectStatusIngest struct {
+	Workload  string `json:"workload,omitempty"`
+	Container string `json:"container,omitempty"`
+	Mount     string `json:"mount,omitempty"`
 }
 
 type ConnectStatusIntercept struct {
@@ -283,6 +290,13 @@ func getStatusInfo(ctx context.Context, di *daemon.Info) (*StatusInfo, error) {
 		us.Status = "Connected"
 		us.KubernetesServer = status.ClusterServer
 		us.KubernetesContext = status.ClusterContext
+		for _, ig := range status.GetIngests() {
+			us.Ingests = append(us.Ingests, ConnectStatusIngest{
+				Workload:  ig.Workload,
+				Container: ig.Container,
+				Mount:     ig.ClientMountPoint,
+			})
+		}
 		for _, icept := range status.GetIntercepts().GetIntercepts() {
 			us.Intercepts = append(us.Intercepts, ConnectStatusIntercept{
 				Name:   icept.Spec.Name,
@@ -541,17 +555,25 @@ func (cs *UserDaemonStatus) print(kvf *ioutil.KeyValueFormatter) {
 	if len(cs.ExposedPorts) > 0 {
 		kvf.Add("Exposed ports", fmt.Sprintf("%v", cs.ExposedPorts))
 	}
-	out := &strings.Builder{}
-	fmt.Fprintf(out, "%d total\n", len(cs.Intercepts))
-	if len(cs.Intercepts) > 0 {
+	if il := len(cs.Ingests); il > 0 {
+		out := &strings.Builder{}
+		ioutil.Printf(out, "%d total\n", il)
+		for _, ingest := range cs.Ingests {
+			ioutil.Printf(out, "  %s/%s\n", ingest.Workload, ingest.Container)
+		}
+		kvf.Add("Ingests", out.String())
+	}
+	if il := len(cs.Intercepts); il > 0 {
+		out := &strings.Builder{}
+		ioutil.Printf(out, "%d total\n", il)
 		subKvf := ioutil.DefaultKeyValueFormatter()
 		subKvf.Indent = "  "
 		for _, intercept := range cs.Intercepts {
 			subKvf.Add(intercept.Name, intercept.Client)
 		}
 		subKvf.Println(out)
+		kvf.Add("Intercepts", out.String())
 	}
-	kvf.Add("Intercepts", out.String())
 }
 
 func (ts *TrafficManagerStatus) MarshalJSON() ([]byte, error) {

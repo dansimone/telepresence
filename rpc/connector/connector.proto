@@ -49,6 +49,15 @@ service Connector {
   // Queries the connector whether it is possible to create the given intercept.
   rpc CanIntercept(CreateInterceptRequest) returns (InterceptResult);
 
+  // Starts an Ingest session.
+  rpc Ingest(IngestRequest) returns (IngestInfo);
+
+  // Get info about an ongoing Ingest.
+  rpc GetIngest(IngestIdentifier) returns (IngestInfo);
+
+  // Ends an Ingest session.
+  rpc LeaveIngest(IngestIdentifier) returns (IngestInfo);
+
   // Adds an intercept to a workload.  Requires having already called
   // Connect.
   rpc CreateIntercept(CreateInterceptRequest) returns (InterceptResult);
@@ -221,6 +230,8 @@ message ConnectInfo {
 
   manager.InterceptInfoSnapshot intercepts = 8;
 
+  repeated IngestInfo ingests = 9;
+
   manager.SessionInfo session_info = 10;
 
   manager.VersionInfo2 manager_version = 19;
@@ -234,8 +245,6 @@ message ConnectInfo {
 
   repeated string mapped_namespaces = 15;
   repeated daemon.SubnetViaWorkload subnet_via_workloads = 18;
-
-  reserved 9;
 }
 
 message UninstallRequest {
@@ -271,14 +280,70 @@ message ListRequest {
   enum Filter {
     UNSPECIFIED = 0;
     INTERCEPTS = 1;
-    INSTALLED_AGENTS = 2;
-    INTERCEPTABLE = 3;
-    EVERYTHING = 4;
+    INGESTS = 2;
+    INSTALLED_AGENTS = 3;
+    INTERCEPTABLE = 4;
+    EVERYTHING = 5;
   }
   Filter filter = 1;
 
   // Namespace to list.
   string namespace = 2;
+}
+
+message IngestIdentifier {
+  // Name of the workload that holds the desire container.
+  string workload_name = 1;
+
+  // The name of the desired container. Must be set when the workload contains more
+  // than one container candidate.
+  string container_name = 2;
+}
+
+message IngestRequest {
+  IngestIdentifier identifier = 1;
+
+  // Desired mount point. Can be set to "true" to generated temporary mount point,
+  // "false" to prevent that mounting takes place, an explicit path to use for the
+  // mount or an empty string in combination with a non-zero local_mount_port.
+  string mount_point = 2;
+
+  // Local port where an sftp client can connect when doing docker volume mounts.
+  int32 local_mount_port = 3;
+
+  // Extra ports that will be forwarded from the intercepting client's localhost
+  // to the intercepted pod. Each entry is a string containing a port number followed
+  // by an optional "/TCP" or "/UDP".
+  repeated string local_ports = 4;
+}
+
+message IngestInfo {
+  // Name of ingested workload
+  string workload = 1;
+
+  string workload_kind = 2;
+
+  // Name of ingested container
+  string container = 3;
+
+  // The directory where the intercept mounts can be found in the agent.
+  string mount_point = 4;
+
+  // The IP of the ingested pod.
+  string pod_ip = 5;
+
+  // The port where the SFTP server listens.
+  int32 sftp_port = 6;
+
+  // The port where the FTP server listens.
+  int32 ftp_port = 7;
+
+  // The environment of the ingested container
+  map<string, string> environment = 8;
+
+  // The directory where the client mounts the remote mount_point. Only
+  // set when obtaining InterceptInfo from the user daemon.
+  string client_mount_point = 9;
 }
 
 message WatchWorkloadsRequest {
@@ -300,6 +365,9 @@ message WorkloadInfo {
 
   // InterceptInfos reported from the traffic manager in case the workload is currently intercepted
   repeated manager.InterceptInfo intercept_infos = 4;
+
+  // InterceptInfos reported from the traffic manager in case the workload is currently intercepted
+  repeated IngestInfo ingest_infos = 5;
 
   // Workload Resource type (e.g. Deployment, ReplicaSet, StatefulSet, Rollout)
   string workload_resource_type = 6;

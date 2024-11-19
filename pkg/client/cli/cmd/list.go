@@ -21,6 +21,7 @@ import (
 
 type listCommand struct {
 	onlyIntercepts    bool
+	onlyIngests       bool
 	onlyAgents        bool
 	onlyInterceptable bool
 	debug             bool
@@ -42,6 +43,7 @@ func list() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.BoolVarP(&s.onlyIntercepts, "intercepts", "i", false, "intercepts only")
+	flags.BoolVarP(&s.onlyIngests, "ingests", "g", false, "ingests only")
 	flags.BoolVarP(&s.onlyAgents, "agents", "a", false, "with installed agents only")
 	flags.BoolVarP(&s.onlyInterceptable, "only-interceptable", "o", true, "interceptable workloads only")
 	flags.BoolVar(&s.debug, "debug", false, "include debugging information")
@@ -91,6 +93,8 @@ func (s *listCommand) list(cmd *cobra.Command, _ []string) error {
 	switch {
 	case s.onlyIntercepts:
 		filter = connector.ListRequest_INTERCEPTS
+	case s.onlyIngests:
+		filter = connector.ListRequest_INGESTS
 	case s.onlyAgents:
 		filter = connector.ListRequest_INSTALLED_AGENTS
 	case s.onlyInterceptable:
@@ -164,8 +168,8 @@ func (s *listCommand) printList(ctx context.Context, workloads []*connector.Work
 	}
 
 	state := func(workload *connector.WorkloadInfo) string {
-		if iis := workload.InterceptInfos; len(iis) > 0 {
-			return intercept.DescribeIntercepts(ctx, iis, nil, s.debug)
+		if iis, igs := workload.InterceptInfos, workload.IngestInfos; len(iis)+len(igs) > 0 {
+			return intercept.DescribeIntercepts(ctx, iis, igs, nil, s.debug)
 		}
 		if workload.NotInterceptableReason == "Progressing" {
 			return "progressing..."

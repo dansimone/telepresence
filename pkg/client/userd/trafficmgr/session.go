@@ -17,6 +17,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/google/uuid"
+	"github.com/puzpuzpuz/xsync/v3"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -116,7 +117,12 @@ type session struct {
 
 	workloadSubscribers map[uuid.UUID]chan struct{}
 
-	// currentInterceptsLock ensures that all accesses to currentIntercepts, currentMatchers,
+	// currentIngests is tracks the ingests that are active in this session.
+	currentIngests *xsync.MapOf[ingestKey, *ingest]
+
+	ingestTracker *podAccessTracker
+
+	// currentInterceptsLock ensures that all accesses to currentAgents, currentIntercepts, currentMatchers,
 	// currentAPIServers, interceptWaiters, and ingressInfo are synchronized
 	//
 	currentInterceptsLock sync.Mutex
@@ -446,6 +452,8 @@ func connectMgr(
 		managerName:        managerName,
 		managerVersion:     managerVersion,
 		sessionInfo:        si,
+		currentIngests:     xsync.NewMapOf[ingestKey, *ingest](),
+		ingestTracker:      newPodAccessTracker(),
 		workloads:          make(map[string]map[workloadInfoKey]workloadInfo),
 		interceptWaiters:   make(map[string]*awaitIntercept),
 		isPodDaemon:        cr.IsPodDaemon,
@@ -581,6 +589,7 @@ func (s *session) ApplyConfig(ctx context.Context) error {
 func (s *session) getInfosForWorkloads(
 	namespaces []string,
 	iMap map[string][]*manager.InterceptInfo,
+	gMap map[string][]*rpc.IngestInfo,
 	sMap map[string]string,
 	filter rpc.ListRequest_Filter,
 ) []*rpc.WorkloadInfo {
@@ -599,6 +608,9 @@ func (s *session) getInfosForWorkloads(
 
 		var ok bool
 		if wlInfo.InterceptInfos, ok = iMap[name]; !ok && filter == rpc.ListRequest_INTERCEPTS {
+			return
+		}
+		if wlInfo.IngestInfos, ok = gMap[name]; !ok && filter == rpc.ListRequest_INGESTS {
 			return
 		}
 		if wlInfo.AgentVersion, ok = sMap[name]; !ok && filter == rpc.ListRequest_INSTALLED_AGENTS {
@@ -700,7 +712,7 @@ func (s *session) WorkloadInfoSnapshot(
 
 	var nss []string
 	var sMap map[string]string
-	if filter == rpc.ListRequest_INTERCEPTS || filter == rpc.ListRequest_INSTALLED_AGENTS {
+	if filter == rpc.ListRequest_INTERCEPTS || filter == rpc.ListRequest_INGESTS || filter == rpc.ListRequest_INSTALLED_AGENTS {
 		// Special case, we don't care about namespaces in general. Instead, we use the connected namespace
 		nss = []string{s.Namespace}
 	} else {
@@ -735,8 +747,13 @@ nextIs:
 			}
 		}
 	}
+	gMap := make(map[string][]*rpc.IngestInfo, s.currentIngests.Size())
+	s.currentIngests.Range(func(key ingestKey, ig *ingest) bool {
+		gMap[key.workload] = append(gMap[key.workload], ig.response())
+		return true
+	})
 
-	workloadInfos := s.getInfosForWorkloads(nss, iMap, sMap, filter)
+	workloadInfos := s.getInfosForWorkloads(nss, iMap, gMap, sMap, filter)
 	return &rpc.WorkloadInfoSnapshot{Workloads: workloadInfos}, nil
 }
 
@@ -840,6 +857,7 @@ func (s *session) status(c context.Context, initial bool) *rpc.ConnectInfo {
 		ConnectionName:   s.daemonID.Name,
 		KubeFlags:        s.OriginalFlagMap,
 		Namespace:        s.Namespace,
+		Ingests:          s.getCurrentIngests(),
 		Intercepts:       &manager.InterceptInfoSnapshot{Intercepts: s.getCurrentInterceptInfos()},
 		ManagerVersion: &manager.VersionInfo2{
 			Name:    s.managerName,

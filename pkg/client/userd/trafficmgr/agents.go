@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/telepresenceio/telepresence/rpc/v2/manager"
 )
@@ -18,16 +19,48 @@ func (s *session) watchAgentsLoop(ctx context.Context) error {
 		snapshot, err := stream.Recv()
 		if err != nil {
 			// Handle as if we had an empty snapshot. This will ensure that port forwards and volume mounts are canceled correctly.
-			s.setCurrentAgents(nil)
+			s.handleAgentSnapshot(ctx, nil)
 			if ctx.Err() != nil || errors.Is(err, io.EOF) {
 				// Normal termination
 				return nil
 			}
 			return fmt.Errorf("manager.WatchAgents recv: %w", err)
 		}
-		s.setCurrentAgents(snapshot.Agents)
+		s.handleAgentSnapshot(ctx, snapshot.Agents)
 	}
 	return nil
+}
+
+func (s *session) handleAgentSnapshot(ctx context.Context, infos []*manager.AgentInfo) {
+	s.ingestTracker.initSnapshot()
+	s.setCurrentAgents(infos)
+
+	// infoForKey returns the AgentInfos that matches the ingestKey
+	infosForKey := func(key ingestKey) (ais []*manager.AgentInfo) {
+		for _, info := range infos {
+			if info.Name == key.workload {
+				for cn := range info.Containers {
+					if cn == key.container {
+						ais = append(ais, info)
+					}
+				}
+			}
+		}
+		return ais
+	}
+
+	s.currentIngests.Range(func(key ingestKey, ig *ingest) bool {
+		ais := infosForKey(key)
+		if len(ais) > 0 {
+			if slices.IndexFunc(ais, func(cai *manager.AgentInfo) bool { return cai.PodName == ig.PodName }) < 0 {
+				// The pod selected for the ingest is no longer active, so replace it.
+				ig.AgentInfo = ais[0]
+			}
+			s.ingestTracker.start(ig.podAccess(s.rootDaemon))
+		}
+		return true
+	})
+	s.ingestTracker.cancelUnwanted(ctx)
 }
 
 func (s *session) getCurrentAgents() []*manager.AgentInfo {

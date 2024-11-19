@@ -86,5 +86,20 @@ func (s *session) ensureNoMountConflict(localMountPoint string, localMountPort i
 		}
 	}
 	s.currentInterceptsLock.Unlock()
+	if err != nil {
+		return err
+	}
+
+	s.currentIngests.Range(func(key ingestKey, ig *ingest) bool {
+		if localMountPoint != "" && ig.localMountPoint == localMountPoint {
+			err = status.Error(codes.AlreadyExists, fmt.Sprintf("mount point %s already in use by ingest %s", localMountPoint, key))
+			return false
+		}
+		if localMountPort != 0 && ig.localMountPort == localMountPort {
+			err = status.Error(codes.AlreadyExists, fmt.Sprintf("mount port %d already in use by ingest %s", localMountPort, key))
+			return false
+		}
+		return true
+	})
 	return err
 }

@@ -51,6 +51,16 @@ items:
           `--replace` option is used, it ensures that this container is replaced.
         docs: https://telepresence.io/docs/reference/intercepts/container
       - type: feature
+        title: Added ingest command
+        body: >-
+          The new `telepresence ingest` command, similar to `telepresence intercept`, provides local access to the
+          volume mounts and environment variables of a targeted container. However, unlike `telepresence intercept`,
+          `telepresence ingest` does not redirect traffic to the container and ensures that the mounted volumes are
+          read-only.
+          
+          An ingest requires a traffic-agent to be installed in the pods of the targeted workload. Beyond that, it's
+          a client-side operation. This allows developers to have multiple simultaneous ingests on the same container.
+      - type: feature
         title: Unify client configuration
         body: >-
           Previously, client configuration was divided between the config.yml file and a Kubernetes extension. DNS and
@@ -84,16 +94,6 @@ items:
           The Helm chart value `workloads` now supports the kinds `deployments.enabled`, `statefulSets.enabled`, `replicaSets.enabled`.
           and `rollouts.enabled`. All except `rollouts` are enabled by default. The traffic-manager will ignore workloads, and
           Telepresence will not be able to intercept them, if the `enabled` of the corresponding kind is set to `false`.
-      - type: bugfix
-        title: Don't include pods in the kube-system namespace when computing pod-subnets from pod IPs
-        body: >-
-          A user would normally never access pods in the `kube-system` namespace directly, and automatically including pods
-          included there when computing the subnets will often lead to problems when running the cluster locally. This namespace
-          is therefore now excluded in situations when the pod subnets are computed from the IPs of pods. Services in this
-          namespace will still be available through the service subnet.
-          
-          If a user should require the pod-subnet to be mapped, it can be added to the `client.routing.alsoProxy`
-          list in the helm chart.
   - version: 2.20.3
     date: 2024-11-18
     notes:

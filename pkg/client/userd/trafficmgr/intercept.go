@@ -552,20 +552,19 @@ func (s *session) removeIntercept(c context.Context, ic *intercept) error {
 func (s *session) stopHandler(c context.Context, name, handlerContainer string, pid int) {
 	// No use trying to kill processes when using a container-based daemon, unless
 	// that daemon runs as a normal user daemon with a separate root daemon.
-	// Some users run a standard telepresence client together with intercepts in one
-	// single container.
+	// Some users run a standard telepresence client together with ingests/intercepts
+	// in one single container.
 	if !(proc.RunningInContainer() && userd.GetService(c).RootSessionInProcess()) {
 		if handlerContainer != "" {
-			dlog.Debugf(c, "stopping handler cointainer %s for intercept %s", handlerContainer, name)
 			if err := docker.StopContainer(docker.EnableClient(c), handlerContainer); err != nil {
 				dlog.Error(c, err)
 			}
 		} else if pid != 0 {
 			p, err := os.FindProcess(pid)
 			if err != nil {
-				dlog.Errorf(c, "unable to find handler for intercept %s with pid %d", name, pid)
+				dlog.Errorf(c, "unable to find handler for ingest/intercept %s with pid %d", name, pid)
 			} else {
-				dlog.Debugf(c, "terminating interceptor for intercept %s with pid %d", name, pid)
+				dlog.Debugf(c, "terminating interceptor for ingest/intercept %s with pid %d", name, pid)
 				_ = proc.Terminate(p)
 			}
 		}
@@ -576,10 +575,17 @@ func (s *session) stopHandler(c context.Context, name, handlerContainer string, 
 // the running process will be signalled when the intercept is removed.
 func (s *session) AddInterceptor(ctx context.Context, id string, ih *rpc.Interceptor) error {
 	s.currentInterceptsLock.Lock()
-	dlog.Debugf(ctx, "Adding intercept handler for id %s, %v", id, ih)
+	dlog.Debugf(ctx, "Adding ingest/intercept handler for id %s, %v", id, ih)
 	if ci, ok := s.currentIntercepts[id]; ok {
 		ci.pid = int(ih.Pid)
 		ci.handlerContainer = ih.ContainerName
+	} else {
+		if parts := strings.Split(id, "/"); len(parts) == 2 {
+			if cg, ok := s.currentIngests.Load(ingestKey{workload: parts[0], container: parts[1]}); ok {
+				cg.pid = int(ih.Pid)
+				cg.handlerContainer = ih.ContainerName
+			}
+		}
 	}
 	s.currentInterceptsLock.Unlock()
 	return nil
@@ -590,6 +596,13 @@ func (s *session) RemoveInterceptor(id string) error {
 	if ci, ok := s.currentIntercepts[id]; ok {
 		ci.pid = 0
 		ci.handlerContainer = ""
+	} else {
+		if parts := strings.Split(id, "/"); len(parts) == 2 {
+			if cg, ok := s.currentIngests.Load(ingestKey{workload: parts[0], container: parts[1]}); ok {
+				cg.pid = 0
+				cg.handlerContainer = ""
+			}
+		}
 	}
 	s.currentInterceptsLock.Unlock()
 	return nil

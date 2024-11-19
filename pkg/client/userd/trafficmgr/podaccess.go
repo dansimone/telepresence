@@ -58,7 +58,7 @@ type podAccessKey struct {
 }
 
 // The podAccessSync provides pod-specific synchronization for cancellation of port forwards
-// and mounts. Cancellation here does not mean that the intercept is canceled. It just
+// and mounts. Cancellation here does not mean that the ingest/intercept is canceled. It just
 // means that the given pod is no longer the chosen one. This typically happens when pods
 // are scaled down and then up again.
 type podAccessSync struct {
@@ -150,7 +150,7 @@ func newPodAccessTracker() *podAccessTracker {
 	return &podAccessTracker{alivePods: make(map[podAccessKey]*podAccessSync)}
 }
 
-// start a port forward for the given intercept and remembers that it's alive.
+// start a port forward for the given ingest/intercept and remembers that it's alive.
 func (lpf *podAccessTracker) start(pa *podAccess) {
 	// The mounts performed here are synced on by podIP + port to keep track of active
 	// mounts. This is not enough in situations when a pod is deleted and another pod
@@ -174,6 +174,12 @@ func (lpf *podAccessTracker) start(pa *podAccess) {
 	// snapshot has been completely handled
 	lpf.snapshot[fk] = struct{}{}
 	lpf.privateStart(pa)
+	lpf.Unlock()
+}
+
+func (lpf *podAccessTracker) initialStart(ic *podAccess) {
+	lpf.Lock()
+	lpf.privateStart(ic)
 	lpf.Unlock()
 }
 
@@ -240,6 +246,17 @@ func (lpf *podAccessTracker) privateDelete(fk podAccessKey, lp *podAccessSync) {
 	lp.cancelPod()
 	lp.wg.Wait()
 	lpf.Lock()
+}
+
+// cancelContainer cancels mounts and port forwards for the given container.
+func (lpf *podAccessTracker) cancelContainer(workload, container string) {
+	lpf.Lock()
+	for fk, lp := range lpf.alivePods {
+		if fk.container == container && lp.workload == workload {
+			lpf.privateDelete(fk, lp)
+		}
+	}
+	lpf.Unlock()
 }
 
 // cancelUnwanted cancels all mounts and port forwards that haven't been started since initSnapshot.

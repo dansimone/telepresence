@@ -14,6 +14,10 @@ import { Note, Title, Body } from '@site/src/components/ReleaseNotes'
 This update introduces a `--container <name>` option to the intercept command. While this option doesn't influence the port selection, it guarantees that the environment variables and mounts propagated to the client originate from the specified container. Additionally, if the `--replace` option is used, it ensures that this container is replaced.</Body>
 </Note>
 <Note>
+	<Title type="feature">Added ingest command</Title>
+	<Body>The new `telepresence ingest` command is similar to `telepresence intercept` in that it will make volume mounts and environment of the targeted container available locally, but it will ensure that the locally mounted volumes are read-only and not redirect any traffic that is routed to that container. Multiple simultaneous ingests are possible, because they will never conflict.</Body>
+</Note>
+<Note>
 	<Title type="feature" docs="https://telepresence.io/docs/reference/config">Unify client configuration</Title>
 	<Body>Previously, client configuration was divided between the config.yml file and a Kubernetes extension. DNS and routing settings were initially found only in the extension. However, the Helm client structure allowed entries from both.
 To simplify this, we've now aligned the config.yml and Kubernetes extension with the Helm client structure. This means DNS and routing settings are now included in both. The Kubernetes extension takes precedence over the config.yml and Helm client object.
