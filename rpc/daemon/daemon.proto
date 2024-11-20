@@ -94,19 +94,6 @@ message DNSConfig {
   reserved 5;
 }
 
-message Routing {
-  repeated manager.IPNet subnets = 1;
-
-  // also_proxy are user-added subnets.
-  repeated manager.IPNet also_proxy_subnets = 2;
-
-  // never_proxy_subnets are subnets that the daemon should not proxy but resolve
-  // via the underlying network interface.
-  repeated manager.IPNet never_proxy_subnets = 3;
-
-  repeated manager.IPNet allow_conflicting_subnets = 4;
-}
-
 message SubnetViaWorkload {
   // The remote IP that the DNS resolver translates into a Virtual IP to use locally.
   string subnet = 1;

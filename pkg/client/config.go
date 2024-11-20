@@ -993,30 +993,13 @@ type Routing struct {
 	AllowConflicting []netip.Prefix `json:"allowConflicting,omitempty"`
 }
 
-func (r *Routing) ToRPC() *daemon.Routing {
-	return &daemon.Routing{
-		Subnets:                 iputil.PrefixesToRPC(r.Subnets),
-		AlsoProxySubnets:        iputil.PrefixesToRPC(r.AlsoProxy),
-		NeverProxySubnets:       iputil.PrefixesToRPC(r.NeverProxy),
-		AllowConflictingSubnets: iputil.PrefixesToRPC(r.AllowConflicting),
-	}
-}
-
-func RoutingFromRPC(r *daemon.Routing) *Routing {
-	return &Routing{
-		Subnets:          iputil.RPCsToPrefixes(r.Subnets),
-		AlsoProxy:        iputil.RPCsToPrefixes(r.AlsoProxySubnets),
-		NeverProxy:       iputil.RPCsToPrefixes(r.NeverProxySubnets),
-		AllowConflicting: iputil.RPCsToPrefixes(r.AllowConflictingSubnets),
-	}
-}
-
 // RoutingSnake is the same as Routing but with snake_case json/yaml names.
 type RoutingSnake struct {
-	Subnets          []netip.Prefix `json:"subnets"`
-	AlsoProxy        []netip.Prefix `json:"also_proxy_subnets"`
-	NeverProxy       []netip.Prefix `json:"never_proxy_subnets"`
-	AllowConflicting []netip.Prefix `json:"allow_conflicting_subnets"`
+	Subnets             []netip.Prefix `json:"subnets"`
+	AlsoProxy           []netip.Prefix `json:"also_proxy_subnets"`
+	NeverProxy          []netip.Prefix `json:"never_proxy_subnets"`
+	AllowConflicting    []netip.Prefix `json:"allow_conflicting_subnets"`
+	RecursionBlockDelay time.Duration  `json:"recursion_block_delay"`
 }
 
 type DNS struct {
