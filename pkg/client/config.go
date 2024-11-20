@@ -29,7 +29,6 @@ import (
 	"github.com/telepresenceio/telepresence/rpc/v2/daemon"
 	"github.com/telepresenceio/telepresence/v2/pkg/errcat"
 	"github.com/telepresenceio/telepresence/v2/pkg/filelocation"
-	"github.com/telepresenceio/telepresence/v2/pkg/iputil"
 )
 
 type DefaultsAware interface {
@@ -824,6 +823,9 @@ func (r *Routing) merge(o *Routing) {
 	if len(o.Subnets) > 0 {
 		r.Subnets = o.Subnets
 	}
+	if o.RecursionBlockDuration > 0 {
+		r.RecursionBlockDuration = o.RecursionBlockDuration
+	}
 }
 
 func (d *DNS) Equal(o *DNS) bool {
@@ -987,19 +989,20 @@ func LoadConfig(c context.Context) (cfg Config, err error) {
 }
 
 type Routing struct {
-	Subnets          []netip.Prefix `json:"subnets,omitempty"`
-	AlsoProxy        []netip.Prefix `json:"alsoProxy,omitempty"`
-	NeverProxy       []netip.Prefix `json:"neverProxy,omitempty"`
-	AllowConflicting []netip.Prefix `json:"allowConflicting,omitempty"`
+	Subnets                []netip.Prefix `json:"subnets,omitempty"`
+	AlsoProxy              []netip.Prefix `json:"alsoProxy,omitempty"`
+	NeverProxy             []netip.Prefix `json:"neverProxy,omitempty"`
+	AllowConflicting       []netip.Prefix `json:"allowConflicting,omitempty"`
+	RecursionBlockDuration time.Duration  `json:"recursionBlockDuration,omitempty"`
 }
 
 // RoutingSnake is the same as Routing but with snake_case json/yaml names.
 type RoutingSnake struct {
-	Subnets             []netip.Prefix `json:"subnets"`
-	AlsoProxy           []netip.Prefix `json:"also_proxy_subnets"`
-	NeverProxy          []netip.Prefix `json:"never_proxy_subnets"`
-	AllowConflicting    []netip.Prefix `json:"allow_conflicting_subnets"`
-	RecursionBlockDelay time.Duration  `json:"recursion_block_delay"`
+	Subnets                []netip.Prefix `json:"subnets"`
+	AlsoProxy              []netip.Prefix `json:"also_proxy_subnets"`
+	NeverProxy             []netip.Prefix `json:"never_proxy_subnets"`
+	AllowConflicting       []netip.Prefix `json:"allow_conflicting_subnets"`
+	RecursionBlockDuration time.Duration  `json:"recursion_block_duration"`
 }
 
 type DNS struct {

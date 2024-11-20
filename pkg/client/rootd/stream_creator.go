@@ -7,6 +7,8 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/puzpuzpuz/xsync/v3"
+
 	"github.com/datawire/dlib/dlog"
 	"github.com/telepresenceio/telepresence/v2/pkg/client"
 	"github.com/telepresenceio/telepresence/v2/pkg/ipproto"
@@ -30,7 +32,13 @@ func checkRecursion(p int, ip net.IP, sn netip.Prefix) (err error) {
 	return err
 }
 
-func (s *Session) streamCreator() tunnel.StreamCreator {
+func (s *Session) streamCreator(ctx context.Context) tunnel.StreamCreator {
+	var recursionBlockMap *xsync.MapOf[netip.AddrPort, struct{}]
+	recursionBlockDuration := client.GetConfig(ctx).Routing().RecursionBlockDuration
+	if recursionBlockDuration != 0 {
+		recursionBlockMap = xsync.NewMapOf[netip.AddrPort, struct{}]()
+	}
+
 	return func(c context.Context, id tunnel.ConnID) (tunnel.Stream, error) {
 		p := id.Protocol()
 		srcIp := id.Source()
@@ -49,6 +57,20 @@ func (s *Session) streamCreator() tunnel.StreamCreator {
 			}
 		}
 
+		destAddr, _ := netip.AddrFromSlice(id.Destination())
+		if recursionBlockDuration > 0 {
+			dst := netip.AddrPortFrom(destAddr, id.DestinationPort())
+			_, recursive := recursionBlockMap.LoadOrCompute(dst, func() struct{} {
+				time.AfterFunc(recursionBlockDuration, func() {
+					recursionBlockMap.Delete(dst)
+				})
+				return struct{}{}
+			})
+			if recursive {
+				return nil, fmt.Errorf("refusing recursive dispatch to %s", dst)
+			}
+		}
+
 		var err error
 		var tp tunnel.Provider
 		if a, ok := s.getAgentVIP(id); ok {
@@ -62,9 +84,7 @@ func (s *Session) streamCreator() tunnel.StreamCreator {
 			id = tunnel.NewConnID(id.Protocol(), id.Source(), a.destinationIP.AsSlice(), id.SourcePort(), id.DestinationPort())
 			dlog.Debugf(c, "Opening proxy-via %s tunnel for id %s", a.workload, id)
 		} else {
-			if a, ok := netip.AddrFromSlice(id.Destination()); ok {
-				tp = s.getAgentClient(a)
-			}
+			tp = s.getAgentClient(destAddr)
 			if tp != nil {
 				dlog.Debugf(c, "Opening traffic-agent tunnel for id %s", id)
 			} else {

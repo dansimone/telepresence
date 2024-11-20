@@ -769,7 +769,7 @@ func (s *Session) onClusterInfo(ctx context.Context, mgrInfo *manager.ClusterInf
 
 	if len(subnets) > 0 && s.tunVif == nil {
 		var err error
-		if s.tunVif, err = vif.NewTunnelingDevice(ctx, s.streamCreator()); err != nil {
+		if s.tunVif, err = vif.NewTunnelingDevice(ctx, s.streamCreator(ctx)); err != nil {
 			return fmt.Errorf("NewTunnelVIF: %w", err)
 		}
 	}

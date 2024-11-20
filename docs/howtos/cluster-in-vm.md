@@ -1,6 +1,6 @@
 ---
-title: Host a cluster in a local VM
-description: Use Telepresence to intercept services in a cluster running in a hosted virtual
+title: Host a cluster in Docker or a VM
+description: Use Telepresence to intercept services in a cluster running in a hosted docker container or virtual
  machine.
 hide_table_of_contents: true
 ---
@@ -8,24 +8,29 @@ hide_table_of_contents: true
 # Network considerations for locally hosted clusters
 
 ## The problem
-Telepresence creates a Virtual Network Interface ([VIF](../reference/tun-device.md)) that maps the clusters subnets to the host machine when it connects. If you're running Kubernetes locally (e.g., Docker Desktop, Kind, Minikube, k3s), you may encounter network problems because the devices in the host are also accessible from the cluster's nodes.
+Telepresence creates a Virtual Network Interface ([VIF](../reference/tun-device.md)) that maps the cluster subnets to the host machine when it connects. If you're running Kubernetes locally (e.g., Docker Desktop, Kind, Minikube, k3s), you may encounter network problems because the devices in the host are also accessible from the cluster's nodes.
 
 ### Example:
 A k3s cluster runs in a headless VirtualBox machine that uses a "host-only" network. This network will allow both host-to-guest and guest-to-host connections. In other words, the cluster will have access to the host's network and, while Telepresence is connected, also to its VIF. This means that from the cluster's perspective, there will now be more than one interface that maps the cluster's subnets; the ones already present in the cluster's nodes, and then the Telepresence VIF, mapping them again.
 
-Now, if a request arrives to Telepresence that is covered by a subnet mapped by the VIF, the request is routed to the cluster. If the cluster for some reason doesn't find a corresponding listener that can handle the request, it will eventually try the host network, and find the VIF. The VIF routes the request to the cluster and now the recursion is in motion. The final outcome of the request will likely be a timeout but since the recursion is very resource intensive (a large amount of very rapid connection requests), this will likely also affect other connections in a bad way. 
+Now, if a request arrives to Telepresence covered by a subnet mapped by the VIF, the request is routed to the cluster. If the cluster for some reason doesn't find a corresponding listener that can handle the request, it will eventually try the host network, and find the VIF. The VIF routes the request to the cluster and now the recursion is in motion. The final outcome of the request will likely be a timeout but since the recursion is very resource intensive (a large amount of very rapid connection requests), this will likely also affect other connections in a bad way. 
 
 ## Solution
 
+### Prevent recursion in the VIF
+To prevent recursive connections within the VIF, set the client configuration property `routing.recursionBlockDuration` to a short timeout value.
+A value of `1ms` is typically sufficient. This configuration will temporarily block new connections to a specific IP:PORT pair immediately after a
+connection has been established, thereby preventing looped connections back into the VIF. The block remains in effect for the specified duration.
+
 ### Create a bridge network
-A bridge network is a Link Layer (L2) device that forwards traffic between network segments. By creating a bridge network, you can bypass the host's network stack which enable the Kubernetes cluster to connect directly to the same router as your host.
+An alternative to using the `routing.recursionBlockDuration` can be to create a bridge network. It acts as a Link Layer (L2) device that forwards traffic between network segments. By creating a bridge network, you can bypass the host's network stack, and instead make the Kubernetes cluster to connect directly to the same router as your host.
 
-To create a bridge network, you need to change the network settings of the guest running a cluster's node so that it connects directly to a physical network device on your host. The details on how to configure the bridge depends on what type of virtualization solution you're using.
+To create a bridge network, you need to change the network settings of the guest running a cluster's node so that it connects directly to a physical network device on your host. The details on how to configure the bridge depend on what type of virtualization solution you're using.
 
-### Vagrant + Virtualbox + k3s example
+#### Vagrant + Virtualbox + k3s example
 Here's a sample `Vagrantfile` that will spin up a server node and two agent nodes in three headless instances using a bridged network. It also adds the configuration needed for the cluster to host a docker repository (very handy in case you want to save bandwidth). The Kubernetes registry manifest must be applied using `kubectl -f registry.yaml` once the cluster is up and running.
 
-#### Vagrantfile
+##### Vagrantfile
 ```ruby
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
@@ -128,7 +133,7 @@ end
 
 The Kubernetes manifest to add the registry:
 
-#### registry.yaml
+##### registry.yaml
 ```yaml
 apiVersion: v1
 kind: ReplicationController

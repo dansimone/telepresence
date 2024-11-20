@@ -11,10 +11,10 @@ import Platform from '@site/src/components/Platform';
 
 There are a few different issues that could arise when working with a VPN. Please see the [dedicated page](reference/vpn.md) on Telepresence and VPNs to learn more on how to fix these.
 
-## Connecting to a cluster hosted in a VM on the workstation doesn't work
+## Connecting to a cluster hosted in a Docker Container or a VM on the workstation doesn't work
 
 The cluster probably has access to the host's network and gets confused when it is mapped by Telepresence.
-Please check the [cluster in hosted vm](howtos/cluster-in-vm.md) for more details.
+Please check the [cluster in hosted container or vm](howtos/cluster-in-vm.md) for more details.
 
 ## Volume mounts are not working on macOS
 

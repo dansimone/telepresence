@@ -28,7 +28,7 @@
       link: howtos/outbound
     - title: Work with large clusters
       link: howtos/large-clusters
-    - title: Host a cluster in a local VM
+    - title: Host a cluster in Docker or a VM
       link: howtos/cluster-in-vm
 - title: Technical reference
   items:
