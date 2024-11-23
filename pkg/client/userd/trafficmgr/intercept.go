@@ -336,7 +336,7 @@ func (s *session) ensureNoInterceptConflict(ir *rpc.CreateInterceptRequest) *rpc
 		switch {
 		case iCept.Spec.Name == spec.Name:
 			return InterceptError(common.InterceptError_ALREADY_EXISTS, errcat.User.New(spec.Name))
-		case iCept.Spec.TargetPort == spec.TargetPort && iCept.Spec.TargetHost == spec.TargetHost:
+		case spec.TargetPort != 0 && iCept.Spec.TargetPort == spec.TargetPort && iCept.Spec.TargetHost == spec.TargetHost:
 			return &rpc.InterceptResult{
 				Error:         common.InterceptError_LOCAL_TARGET_IN_USE,
 				ErrorText:     spec.Name,
@@ -380,6 +380,12 @@ func (s *session) CanIntercept(c context.Context, ir *rpc.CreateInterceptRequest
 	}
 	if pi.Error != "" {
 		return nil, InterceptError(common.InterceptError_TRAFFIC_MANAGER_ERROR, errcat.Category(pi.ErrorCategory).New(pi.Error))
+	}
+	if spec.TargetPort == 0 {
+		spec.TargetPort = pi.ContainerPort
+		if er := s.ensureNoInterceptConflict(ir); er != nil {
+			return nil, er
+		}
 	}
 
 	iInfo := &interceptInfo{preparedIntercept: pi}

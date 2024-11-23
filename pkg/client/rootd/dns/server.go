@@ -187,8 +187,7 @@ const (
 	tel2SubDomainDot = tel2SubDomain + "."
 )
 
-// wpadDot is used when rejecting all WPAD (Wep Proxy Auto-Discovery) queries.
-const wpadDot = "wpad."
+var excludePrefixes = []string{"wpad.", "_grpc_config."} //nolint:gochecknoglobals // constant
 
 var (
 	localhostIPv4 = net.IP{127, 0, 0, 1}                                   //nolint:gochecknoglobals // constant
@@ -197,10 +196,11 @@ var (
 
 func (s *Server) shouldDoClusterLookup(query string) bool {
 	name := query[:len(query)-1] // skip last dot
-	if strings.HasPrefix(query, wpadDot) {
-		// Reject "wpad.*"
-		dlog.Debugf(s.ctx, `Cluster DNS excluded by exclude-prefix "wpad." for name %q`, name)
-		return false
+	for _, pf := range excludePrefixes {
+		if strings.HasPrefix(name, pf) {
+			dlog.Debugf(s.ctx, `Cluster DNS excluded by exclude-prefix %q for name %q`, pf, name)
+			return false
+		}
 	}
 
 	if s.isExcluded(name) {

@@ -48,7 +48,7 @@ type Command struct {
 
 func (c *Command) AddFlags(cmd *cobra.Command) {
 	flagSet := cmd.Flags()
-	flagSet.StringVarP(&c.AgentName, "workload", "w", "", "Name of workload (Deployment, ReplicaSet) to intercept, if different from <name>")
+	flagSet.StringVarP(&c.AgentName, "workload", "w", "", "Name of workload (Deployment, ReplicaSet, StatefulSet, Rollout) to intercept, if different from <name>")
 	flagSet.StringVarP(&c.Port, "port", "p", "", ``+
 		`Local port to forward to. If intercepting a service with multiple ports, `+
 		`use <local port>:<svcPortIdentifier>, where the identifier is the port name or port number. `+
@@ -102,7 +102,10 @@ func (c *Command) Validate(cmd *cobra.Command, positional []string) error {
 		c.AgentName = c.Name
 	}
 	if c.Port == "" {
-		c.Port = strconv.Itoa(client.GetConfig(cmd.Context()).Intercept().DefaultPort)
+		// Port defaults to the targeted container port unless a default is explicitly set in the client config.
+		if dp := client.GetConfig(cmd.Context()).Intercept().DefaultPort; dp != 0 {
+			c.Port = strconv.Itoa(dp)
+		}
 	}
 	if err := c.MountFlags.Validate(cmd); err != nil {
 		return err

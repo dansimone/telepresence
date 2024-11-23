@@ -111,6 +111,13 @@ items:
           The Helm chart value `workloads` now supports the kinds `deployments.enabled`, `statefulSets.enabled`, `replicaSets.enabled`.
           and `rollouts.enabled`. All except `rollouts` are enabled by default. The traffic-manager will ignore workloads, and
           Telepresence will not be able to intercept them, if the `enabled` of the corresponding kind is set to `false`.
+      - type: change
+        title: During an intercept, the local port defaults to the targeted port of the intercepted container instead of 8080.
+        body: >-
+          Telepresence mimics the environment of a target container during an intercept, so it's only natural that the default
+          for the local port is determined by the targeted container port rather than just defaulting to 8080.
+          
+          A default can still be explicitly defined using the `config.intercept.defaultPort` setting.
   - version: 2.20.3
     date: 2024-11-18
     notes:

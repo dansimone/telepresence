@@ -290,35 +290,41 @@ func (s *state) runCommand(ctx context.Context) error {
 }
 
 // parsePort parses portSpec based on how it's formatted.
-func parsePort(portSpec string, dockerRun, remote bool) (local uint16, docker uint16, svcPortId string, err error) {
+func parsePort(portSpec string, dockerRun, containerized bool) (local uint16, docker uint16, svcPortId string, err error) {
+	if portSpec == "" {
+		return 0, 0, "", nil
+	}
 	portMapping := strings.Split(portSpec, ":")
 	portError := func() (uint16, uint16, string, error) {
-		if dockerRun && !remote {
+		if dockerRun && !containerized {
 			return 0, 0, "", errcat.User.New("port must be of the format --port <local-port>:<container-port>[:<svcPortIdentifier>]")
 		}
 		return 0, 0, "", errcat.User.New("port must be of the format --port <local-port>[:<svcPortIdentifier>]")
 	}
 
-	if local, err = agentconfig.ParseNumericPort(portMapping[0]); err != nil {
-		return portError()
+	if p := portMapping[0]; p != "" {
+		if local, err = agentconfig.ParseNumericPort(p); err != nil {
+			return portError()
+		}
 	}
 
 	switch len(portMapping) {
 	case 1:
 	case 2:
-		p := portMapping[1]
-		if dockerRun && !remote {
-			if docker, err = agentconfig.ParseNumericPort(p); err != nil {
-				return portError()
+		if p := portMapping[1]; p != "" {
+			if dockerRun && !containerized {
+				if docker, err = agentconfig.ParseNumericPort(p); err != nil {
+					return portError()
+				}
+			} else {
+				if err := agentconfig.ValidatePort(p); err != nil {
+					return portError()
+				}
+				svcPortId = p
 			}
-		} else {
-			if err := agentconfig.ValidatePort(p); err != nil {
-				return portError()
-			}
-			svcPortId = p
 		}
 	case 3:
-		if remote && dockerRun {
+		if containerized && dockerRun {
 			return 0, 0, "", errcat.User.New(
 				"the format --port <local-port>:<container-port>:<svcPortIdentifier> cannot be used when the daemon runs in a container")
 		}
@@ -335,7 +341,7 @@ func parsePort(portSpec string, dockerRun, remote bool) (local uint16, docker ui
 	default:
 		return portError()
 	}
-	if dockerRun && !remote && docker == 0 {
+	if dockerRun && !containerized && docker == 0 {
 		docker = local
 	}
 	return local, docker, svcPortId, nil

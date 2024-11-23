@@ -721,13 +721,8 @@ func (tm *Telemount) UnmarshalJSONV2(in *jsontext.Decoder, opts json.Options) er
 	return json.UnmarshalDecode(in, &wp, opts)
 }
 
-const (
-	defaultInterceptDefaultPort = 8080
-)
-
 var defaultIntercept = Intercept{ //nolint:gochecknoglobals // constant
 	AppProtocolStrategy: k8sapi.Http2Probe,
-	DefaultPort:         defaultInterceptDefaultPort,
 	Telemount:           defaultTelemount,
 }
 
