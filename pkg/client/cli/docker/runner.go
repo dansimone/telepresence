@@ -185,34 +185,13 @@ func (w *waiter) wait(ctx context.Context) error {
 		return errcat.NoDaemonLogs.New(w.err)
 	}
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, proc.SignalsToForward...)
-	defer func() {
-		signal.Stop(sigCh)
-	}()
-
 	killTimer := time.AfterFunc(math.MaxInt64, func() {
 		_ = w.cmd.Process.Kill()
 	})
 	defer killTimer.Stop()
 
-	var signalled atomic.Bool
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-sigCh:
-		}
-		signalled.Store(true)
-		// Kill the docker run after a grace period in case it isn't stopped
-		killTimer.Reset(2 * time.Second)
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
-		defer cancel()
-		if err := docker.StopContainer(docker.EnableClient(ctx), w.name); err != nil {
-			if !errdefs.IsNotFound(err) {
-				dlog.Error(ctx, err)
-			}
-		}
-	}()
+	var exited, signalled atomic.Bool
+	go EnsureStopContainer(ctx, w.name, &exited, &signalled)
 
 	err := w.cmd.Wait()
 	if err != nil {
@@ -224,4 +203,25 @@ func (w *waiter) wait(ctx context.Context) error {
 		}
 	}
 	return err
+}
+
+func EnsureStopContainer(ctx context.Context, containerID string, exited, signalled *atomic.Bool) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, proc.SignalsToForward...)
+	defer func() {
+		signal.Stop(sigCh)
+	}()
+	select {
+	case <-ctx.Done():
+	case <-sigCh:
+		signalled.Store(true)
+		if exited.Load() {
+			return
+		}
+		if err := docker.StopContainer(docker.EnableClient(ctx), containerID); err != nil {
+			if !errdefs.IsNotFound(err) {
+				dlog.Error(ctx, err)
+			}
+		}
+	}
 }

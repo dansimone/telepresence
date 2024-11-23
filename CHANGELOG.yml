@@ -51,7 +51,7 @@ items:
           `--replace` option is used, it ensures that this container is replaced.
         docs: https://telepresence.io/docs/reference/intercepts/container
       - type: feature
-        title: Added ingest command
+        title: New telepresence ingest command
         body: >-
           The new `telepresence ingest` command, similar to `telepresence intercept`, provides local access to the
           volume mounts and environment variables of a targeted container. However, unlike `telepresence intercept`,
@@ -60,6 +60,18 @@ items:
           
           An ingest requires a traffic-agent to be installed in the pods of the targeted workload. Beyond that, it's
           a client-side operation. This allows developers to have multiple simultaneous ingests on the same container.
+      - type: feature
+        title: New telepresence curl command
+        body: >-
+          The new `telepresence curl` command runs curl from within a container. The command requires that a connection
+          has been established using `telepresence connect --docker`, and the container that runs `curl` will share the
+          same network as the containerized telepresence daemon.
+      - type: feature
+        title: New telepresence docker-run command
+        body: >-
+          The new `telepresence docker-run <flags and arguments>` requires that a connection has been established using
+          `telepresence connect --docker` It will perform a `docker run <flags and arguments>` and add the flag necessary
+          to ensure that started container shares the same network as the containerized telepresence daemon.
       - type: feature
         title: Mount everything read-only during intercept
         body: >-

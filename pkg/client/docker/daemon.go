@@ -26,7 +26,6 @@ import (
 	runtime2 "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/datawire/dlib/dexec"
 	"github.com/datawire/dlib/dlog"
 	"github.com/datawire/dlib/dtime"
 	"github.com/telepresenceio/telepresence/v2/pkg/authenticator/patcher"
@@ -377,8 +376,8 @@ func LaunchDaemon(ctx context.Context, daemonID *daemon.Identifier) (conn *grpc.
 			if stopAttempted {
 				return nil, err
 			}
-			// Container is still alive. Try and stop it.
-			stopContainer(ctx, daemonID)
+			// The Container is still alive. Try and stop it.
+			_ = StopContainer(ctx, daemonID.ContainerName())
 			stopAttempted = true
 			i = 1
 			continue
@@ -554,14 +553,6 @@ func detectKind(ctx context.Context, cns []types.ContainerJSON, hostAddrPort net
 		}
 	}
 	return netip.AddrPort{}, ""
-}
-
-func stopContainer(ctx context.Context, daemonID *daemon.Identifier) {
-	args := []string{"stop", daemonID.ContainerName()}
-	dlog.Debug(ctx, shellquote.ShellString("docker", args))
-	if _, err := proc.CaptureErr(dexec.CommandContext(ctx, "docker", args...)); err != nil {
-		dlog.Warn(ctx, err)
-	}
 }
 
 func tryLaunch(ctx context.Context, daemonID *daemon.Identifier, port int, args []string) (string, error) {

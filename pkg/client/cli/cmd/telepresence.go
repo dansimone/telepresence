@@ -136,6 +136,7 @@ func WithSubCommands(ctx context.Context) context.Context {
 	return MergeSubCommands(ctx,
 		configCmd(), connectCmd(), currentClusterId(), gatherLogs(), gatherTraces(), genYAML(), helmCmd(),
 		ingestCmd(), interceptCmd(), kubeauthCmd(), leave(), list(), listContexts(), listNamespaces(), loglevel(), quit(), statusCmd(),
+		dockerRunCmd(), curlCmd(),
 		testVPN(), uninstall(), uploadTraces(), version(), listNamespaces(), listContexts(),
 	)
 }

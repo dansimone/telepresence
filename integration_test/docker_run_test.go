@@ -11,7 +11,6 @@ import (
 	"github.com/datawire/dlib/dcontext"
 	"github.com/datawire/dlib/dlog"
 	"github.com/telepresenceio/telepresence/v2/integration_test/itest"
-	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/daemon"
 )
 
 func (s *singleServiceSuite) Test_DockerRun_HostDaemon() {
@@ -138,9 +137,6 @@ func (s *singleServiceSuite) Test_DockerRun_HostDaemon() {
 }
 
 func (s *dockerDaemonSuite) Test_DockerRun_DockerDaemon() {
-	if s.IsCI() && !(goRuntime.GOOS == "linux" && goRuntime.GOARCH == "amd64") {
-		s.T().Skip("CI can't run linux docker containers inside non-linux runners")
-	}
 	svc := "echo"
 	ctx := s.Context()
 	s.ApplyEchoService(ctx, svc, 80)
@@ -153,13 +149,10 @@ func (s *dockerDaemonSuite) Test_DockerRun_DockerDaemon() {
 	match := regexp.MustCompile(`Connected to context ?(.+),\s*namespace (\S+)\s+\(`).FindStringSubmatch(stdout)
 	require.Len(match, 3)
 
-	daemonID, err := daemon.NewIdentifier("", match[1], match[2], true)
-	require.NoError(err)
-	daemonName := daemonID.ContainerName()
 	tag := "telepresence/echo-test"
 	testDir := "testdata/echo-server"
 
-	_, err = itest.Output(ctx, "docker", "build", "-t", tag, testDir)
+	_, err := itest.Output(ctx, "docker", "build", "-t", tag, testDir)
 	require.NoError(err)
 
 	abs, err := filepath.Abs(testDir)
@@ -189,8 +182,7 @@ func (s *dockerDaemonSuite) Test_DockerRun_DockerDaemon() {
 		s.Eventually(
 			// condition
 			func() bool {
-				out, err := itest.Output(ctx,
-					"docker", "run", "--network", "container:"+daemonName, "--rm", "curlimages/curl", "--silent", "--max-time", "1", svc)
+				out := itest.TelepresenceOk(ctx, "curl", "--silent", "--max-time", "1", svc)
 				if err != nil {
 					dlog.Errorf(ctx, "%s:%v", out, err)
 					return false
@@ -287,4 +279,17 @@ func (s *dockerDaemonSuite) Test_DockerRun_VolumePresent() {
 	s.Empty(stderr)
 	dlog.Infof(ctx, "stdout = %s", stdout)
 	s.True(strings.HasSuffix(stdout, "\nusername"))
+}
+
+func (s *dockerDaemonSuite) Test_DockerRunCommand() {
+	ctx := s.Context()
+	require := s.Require()
+	s.TelepresenceConnect(ctx, "--docker", "--hostname", "cicero")
+	defer itest.TelepresenceQuitOk(ctx)
+
+	stdout, stderr, err := itest.Telepresence(ctx, "docker-run", "--rm", "busybox", "ip", "r")
+	require.NoError(err)
+	s.Empty(stderr)
+	dlog.Infof(ctx, "stdout = %s", stdout)
+	s.Contains(stdout, "dev tel0")
 }

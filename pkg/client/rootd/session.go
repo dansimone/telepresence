@@ -133,6 +133,9 @@ type Session struct {
 	// Subnets configured by the user to never be proxied
 	neverProxySubnets []netip.Prefix
 
+	// Like neverProxySubnets but stripped from the ones that aren't proxied anyway
+	effectiveNeverProxy []netip.Prefix
+
 	// Subnets that will be mapped even if they conflict with local routes
 	allowConflictingSubnets []netip.Prefix
 
@@ -477,34 +480,46 @@ func (s *Session) nextVirtualIP(workload string, destinationIP netip.Addr) (neti
 }
 
 func (s *Session) getNetworkConfig(ctx context.Context) *rpc.NetworkConfig {
-	mc := client.GetDefaultConfig()
+	mc := client.GetConfig(ctx)
 	r := mc.Routing()
 	if s.tunVif != nil {
 		curSubnets := s.tunVif.Router.GetRoutedSubnets()
 		r.Subnets = make([]netip.Prefix, len(curSubnets))
 		copy(r.Subnets, curSubnets)
+	} else {
+		r.Subnets = nil
 	}
-	if len(s.neverProxySubnets) > 0 {
-		r.NeverProxy = make([]netip.Prefix, len(s.neverProxySubnets))
-		copy(r.NeverProxy, s.neverProxySubnets)
+	if len(s.effectiveNeverProxy) > 0 {
+		r.NeverProxy = make([]netip.Prefix, len(s.effectiveNeverProxy))
+		copy(r.NeverProxy, s.effectiveNeverProxy)
+	} else {
+		r.NeverProxy = nil
 	}
 	if len(s.alsoProxySubnets) > 0 {
 		r.AlsoProxy = make([]netip.Prefix, len(s.alsoProxySubnets))
 		copy(r.AlsoProxy, s.alsoProxySubnets)
+	} else {
+		r.AlsoProxy = nil
 	}
 	if len(s.allowConflictingSubnets) > 0 {
 		r.AllowConflicting = make([]netip.Prefix, len(s.allowConflictingSubnets))
 		copy(r.AllowConflicting, s.allowConflictingSubnets)
+	} else {
+		r.AllowConflicting = nil
 	}
 	d := mc.DNS()
 	if s.dnsLocalAddr != nil {
 		d.LocalIP, _ = netip.AddrFromSlice(s.dnsLocalAddr.IP)
+	} else {
+		d.LocalIP = netip.Addr{}
 	}
 	if len(s.remoteDnsIP) > 0 {
 		d.RemoteIP, _ = netip.AddrFromSlice(s.remoteDnsIP)
+	} else {
+		d.RemoteIP = netip.Addr{}
 	}
 
-	js, _ := client.MarshalJSON(client.GetConfig(ctx).Merge(mc))
+	js, _ := client.MarshalJSON(mc)
 	return &rpc.NetworkConfig{
 		Session:      s.session,
 		ClientConfig: js,
@@ -786,6 +801,7 @@ func (s *Session) onClusterInfo(ctx context.Context, mgrInfo *manager.ClusterInf
 	}
 
 	proxy, neverProxy, neverProxyOverrides := computeNeverProxyOverrides(ctx, subnets, s.neverProxySubnets)
+	s.effectiveNeverProxy = neverProxy
 
 	// Fire and forget to send metrics out.
 	go func() {
@@ -799,7 +815,7 @@ func (s *Session) onClusterInfo(ctx context.Context, mgrInfo *manager.ClusterInf
 	}
 	rt := s.tunVif.Router
 	rt.UpdateWhitelist(s.allowConflictingSubnets)
-	return rt.UpdateRoutes(ctx, proxy, neverProxy, neverProxyOverrides)
+	return rt.UpdateRoutes(ctx, proxy, s.effectiveNeverProxy, neverProxyOverrides)
 }
 
 func computeNeverProxyOverrides(ctx context.Context, subnets, nvp []netip.Prefix) (proxy, neverProxy, neverProxyOverrides []netip.Prefix) {

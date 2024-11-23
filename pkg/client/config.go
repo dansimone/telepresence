@@ -338,6 +338,8 @@ type Timeouts struct {
 	PrivateFtpReadWrite time.Duration `json:"ftpReadWrite"`
 	// PrivateFtpShutdown max time to wait for the fuseftp client to complete pending operations before forcing termination.
 	PrivateFtpShutdown time.Duration `json:"ftpShutdown"`
+	// PrivateContainerShutdown max time to wait for a docker container to stop before forcing termination.
+	PrivateContainerShutdown time.Duration `json:"containerShutdown"`
 }
 
 type TimeoutID int
@@ -354,6 +356,7 @@ const (
 	TimeoutTrafficManagerConnect
 	TimeoutFtpReadWrite
 	TimeoutFtpShutdown
+	TimeoutContainerShutdown
 )
 
 type timeoutContext struct {
@@ -400,6 +403,8 @@ func (t *Timeouts) Get(timeoutID TimeoutID) time.Duration {
 		timeoutVal = t.PrivateFtpReadWrite
 	case TimeoutFtpShutdown:
 		timeoutVal = t.PrivateFtpShutdown
+	case TimeoutContainerShutdown:
+		timeoutVal = t.PrivateContainerShutdown
 	default:
 		panic("should not happen")
 	}
@@ -460,6 +465,9 @@ func (e timeoutError) Error() string {
 	case TimeoutFtpShutdown:
 		yamlName = "ftpShutdown"
 		humanName = "FTP client shutdown grace period"
+	case TimeoutContainerShutdown:
+		yamlName = "containerShutdown"
+		humanName = "Docker container shutdown grace period"
 	default:
 		panic("should not happen")
 	}
@@ -490,6 +498,7 @@ const (
 	defaultTimeoutsTrafficManagerConnect = 60 * time.Second
 	defaultTimeoutsFtpReadWrite          = 1 * time.Minute
 	defaultTimeoutsFtpShutdown           = 2 * time.Minute
+	defaultTimeoutsContainerShutdown     = 0
 )
 
 var defaultTimeouts = Timeouts{ //nolint:gochecknoglobals // constant
@@ -504,6 +513,7 @@ var defaultTimeouts = Timeouts{ //nolint:gochecknoglobals // constant
 	PrivateTrafficManagerConnect: defaultTimeoutsTrafficManagerConnect,
 	PrivateFtpReadWrite:          defaultTimeoutsFtpReadWrite,
 	PrivateFtpShutdown:           defaultTimeoutsFtpShutdown,
+	PrivateContainerShutdown:     defaultTimeoutsContainerShutdown,
 }
 
 func (t *Timeouts) defaults() DefaultsAware {
