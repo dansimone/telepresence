@@ -243,7 +243,7 @@ prometheus:
 #
 # You do not need to create any extra RBAC if your users are cluster admins.
 # For more on how telepresence uses rbac, check out:
-# https://www.getambassador.io/docs/telepresence/latest/reference/rbac/
+# https://www.telepresence.io/docs/reference/rbac/
 clientRbac:
 
   # Create the extra RBAC for non-admin users.

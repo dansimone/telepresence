@@ -11,8 +11,7 @@ Next Steps
 --------------------------------------------------------------------------------
 
 - Take a look at our RBAC documentation for setting up the minimal required RBAC
-roles for your users at
-https://www.getambassador.io/docs/telepresence/latest/reference/rbac/
+roles for your users at https://www.telepresence.io/docs/reference/rbac
 
 - Ensure that you are keeping up to date with Telepresence releases 
 https://github.com/telepresenceio/telepresence/releases so that your Traffic

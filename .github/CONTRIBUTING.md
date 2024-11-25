@@ -141,8 +141,7 @@ shortens the time for the test with about 20 seconds.
  - The main thing is that in your `~/.config/telepresence/config.yml`
    (`~/Library/Application Support/telepresence/config.yml` on macOS)
    file you set `images.registry` to match the `TELEPRESENCE_REGISTRY`
-   environment variable. See
-   https://www.getambassador.io/docs/telepresence/latest/reference/config/
+   environment variable. See https://www.telepresence.io/docs/reference/config
    for more information.
 
  - `TELEPRESENCE_VERSION` is is the "vSEMVER" string used by the

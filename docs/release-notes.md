@@ -743,7 +743,7 @@ Add option to set traffic agent pull policy in helm chart.
 Fixes a resource leak in the Traffic manager caused by lingering tunnels between the clients and Traffic agents. The tunnels are now closed correctly when terminated from the side that created them.
 </div>
 
-## <div style="display:flex;"><img src="images/bugfix.png" alt="bugfix" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">[Fixed problem setting traffic manager namespace using the kubeconfig extension.](https://www.getambassador.io/docs/telepresence/latest/reference/config#manager)</div></div>
+## <div style="display:flex;"><img src="images/bugfix.png" alt="bugfix" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">[Fixed problem setting traffic manager namespace using the kubeconfig extension.](https://www.telepresence.io/docs/reference/config#manager)</div></div>
 <div style="margin-left: 15px">
 
 Fixes a regression introduced in version 2.10.5, making it impossible to set the traffic-manager namespace using the telepresence.io kubeconfig extension.

@@ -70,7 +70,7 @@ func (rt *Router) ValidateRoutes(ctx context.Context, routes []netip.Prefix) err
 			if tr.RoutedNet.Overlaps(r) {
 				return errcat.Config.New(fmt.Sprintf(
 					"subnet %s overlaps with existing route %q. Please see %s for more information",
-					r, tr, "https://www.getambassador.io/docs/telepresence/latest/reference/vpn",
+					r, tr, "https://www.telepresence.io/docs/reference/vpn",
 				))
 			}
 		}

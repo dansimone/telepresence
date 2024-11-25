@@ -875,7 +875,7 @@ items:
         body: >-
           Fixes a regression introduced in version 2.10.5, making it impossible to set the traffic-manager namespace
           using the telepresence.io kubeconfig extension.
-        docs: https://www.getambassador.io/docs/telepresence/latest/reference/config#manager
+        docs: https://www.telepresence.io/docs/reference/config#manager
   - version: 2.14.0
     date: "2023-06-12"
     notes:
