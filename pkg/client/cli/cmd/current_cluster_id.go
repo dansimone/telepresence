@@ -38,6 +38,7 @@ func currentClusterId() *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "Cluster ID: %s\n", clusterID)
 			return nil
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	kubeFlags := pflag.NewFlagSet("Kubernetes flags", 0)
 	kubeConfig.AddFlags(kubeFlags)

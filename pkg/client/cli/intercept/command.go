@@ -2,18 +2,24 @@ package intercept
 
 import (
 	"errors"
+	"os"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/datawire/dlib/dlog"
+	"github.com/datawire/k8sapi/pkg/k8sapi"
 	"github.com/telepresenceio/telepresence/rpc/v2/connector"
 	"github.com/telepresenceio/telepresence/v2/pkg/client"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/connect"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/daemon"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/docker"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/env"
+	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/ingest"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/mount"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/output"
 	"github.com/telepresenceio/telepresence/v2/pkg/dos"
@@ -75,8 +81,6 @@ func (c *Command) AddFlags(cmd *cobra.Command) {
 	c.MountFlags.AddFlags(flagSet, false)
 	c.DockerFlags.AddFlags(flagSet, "intercepted")
 
-	flagSet.StringP("namespace", "n", "", "If present, the namespace scope for this CLI request")
-
 	flagSet.StringVar(&c.Mechanism, "mechanism", "tcp", "Which extension `mechanism` to use")
 
 	flagSet.StringVar(&c.WaitMessage, "wait-message", "", "Message to print when intercept handler has started")
@@ -87,6 +91,9 @@ func (c *Command) AddFlags(cmd *cobra.Command) {
 	flagSet.BoolVarP(&c.Replace, "replace", "", false,
 		`Indicates if the traffic-agent should replace application containers in workload pods. `+
 			`The default behavior is for the agent sidecar to be installed alongside existing containers.`)
+
+	_ = cmd.RegisterFlagCompletionFunc("container", ingest.AutocompleteContainer)
+	_ = cmd.RegisterFlagCompletionFunc("service", autocompleteService)
 }
 
 func (c *Command) Validate(cmd *cobra.Command, positional []string) error {
@@ -128,8 +135,65 @@ func (c *Command) Run(cmd *cobra.Command, positional []string) error {
 	return err
 }
 
+func autocompleteService(cmd *cobra.Command, args []string, toComplete string) (serviceNames []string, directive cobra.ShellCompDirective) {
+	ctx, s, err := connect.GetOptionalSession(cmd)
+	if s == nil || err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	if len(args) == 0 {
+		ctx, kc, err := daemon.GetCommandKubeConfig(cmd)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		ki, err := kubernetes.NewForConfig(kc.RestConfig)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		svcs, err := k8sapi.Services(k8sapi.WithK8sInterface(ctx, ki), kc.Namespace, nil)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		for _, svc := range svcs {
+			n := svc.GetName()
+			if toComplete == "" || strings.HasPrefix(n, toComplete) {
+				serviceNames = append(serviceNames, n)
+			}
+		}
+		return serviceNames, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
+	}
+	sc, err := s.GetAgentConfig(ctx, args[0])
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	cn := cmd.Flag("container").Value.String()
+	for _, c := range sc.Containers {
+		if cn != "" && cn != c.Name {
+			continue
+		}
+		for _, ic := range c.Intercepts {
+			n := ic.ServiceName
+			if toComplete == "" || strings.HasPrefix(n, toComplete) {
+				serviceNames = append(serviceNames, n)
+			}
+		}
+	}
+	sort.Strings(serviceNames)
+	return slices.Compact(serviceNames), cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
+}
+
 func ValidArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// Trace level is used here, because we generally don't want to log expansion attempts
+	// in the cli.log
+	dlog.Tracef(cmd.Context(), "toComplete = %s, args = %v", toComplete, args)
+
 	if len(args) > 0 {
+		if slices.Contains(os.Args, "--") {
+			if cmd.Flag("docker-run").Changed {
+				return docker.AutocompleteRun(cmd, args[1:], toComplete)
+			}
+			// Scan for command to execute
+			return nil, cobra.ShellCompDirectiveDefault
+		}
 		// Not completing the name of the workload
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -139,15 +203,8 @@ func ValidArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, 
 	req := connector.ListRequest{
 		Filter: connector.ListRequest_INTERCEPTABLE,
 	}
-	nf := cmd.Flag("namespace")
-	if nf.Changed {
-		req.Namespace = nf.Value.String()
-	}
 	ctx := cmd.Context()
 
-	// Trace level is used here, because we generally don't want to log expansion attempts
-	// in the cli.log
-	dlog.Tracef(ctx, "ns = %s, toComplete = %s, args = %v", req.Namespace, toComplete, args)
 	r, err := daemon.GetUserClient(ctx).List(ctx, &req)
 	if err != nil {
 		dlog.Debugf(ctx, "unable to get list of interceptable workloads: %v", err)

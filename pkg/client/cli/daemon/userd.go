@@ -7,13 +7,18 @@ import (
 	"strings"
 
 	"github.com/blang/semver/v4"
+	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	grpcCodes "google.golang.org/grpc/codes"
 	grpcStatus "google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/datawire/dlib/dexec"
 	"github.com/datawire/dlib/dlog"
 	"github.com/telepresenceio/telepresence/rpc/v2/connector"
+	"github.com/telepresenceio/telepresence/rpc/v2/manager"
+	"github.com/telepresenceio/telepresence/v2/pkg/agentconfig"
+	"github.com/telepresenceio/telepresence/v2/pkg/client"
 )
 
 type UserClient interface {
@@ -142,4 +147,41 @@ func (u *userClient) AddHandler(ctx context.Context, id string, cmd *dexec.Cmd, 
 		return err
 	}
 	return nil
+}
+
+func (s *Session) GetAgentConfig(ctx context.Context, workload string) (*agentconfig.Sidecar, error) {
+	agc, err := s.UserClient.GetAgentConfig(ctx, &manager.AgentConfigRequest{Name: workload})
+	if err != nil {
+		return nil, err
+	}
+	scx, err := agentconfig.UnmarshalYAML(agc.Data)
+	if err != nil {
+		return nil, err
+	}
+	return scx.AgentConfig(), nil
+}
+
+// GetCommandKubeConfig will return the fully resolved client.Kubeconfig for the given command.
+func GetCommandKubeConfig(cmd *cobra.Command) (context.Context, *client.Kubeconfig, error) {
+	ctx := cmd.Context()
+	uc := GetUserClient(ctx)
+	var kc *client.Kubeconfig
+	var err error
+	if uc != nil && !cmd.Flag("context").Changed {
+		// Get the context that we're currently connected to.
+		var ci *connector.ConnectInfo
+		ci, err = uc.Status(ctx, &emptypb.Empty{})
+		if err == nil {
+			ctx, kc, err = client.NewKubeconfig(ctx, map[string]string{"context": ci.ClusterContext}, "")
+		}
+	} else {
+		if GetRequest(ctx) == nil {
+			if ctx, err = WithDefaultRequest(ctx, cmd); err != nil {
+				return ctx, nil, err
+			}
+		}
+		rq := GetRequest(ctx)
+		ctx, kc, err = client.NewKubeconfig(ctx, rq.KubeFlags, rq.ManagerNamespace)
+	}
+	return ctx, kc, err
 }

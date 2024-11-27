@@ -49,6 +49,7 @@ func helmInstall() *cobra.Command {
 			}
 			return ha.run(cmd, args)
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 
 	flags := cmd.Flags()

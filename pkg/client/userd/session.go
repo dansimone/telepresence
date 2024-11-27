@@ -55,7 +55,7 @@ type Session interface {
 
 	AddInterceptor(context.Context, string, *rpc.Interceptor) error
 	RemoveInterceptor(string) error
-	ClearIntercepts(context.Context) error
+	ClearIngestsAndIntercepts(context.Context) error
 
 	GetInterceptInfo(string) *manager.InterceptInfo
 	GetInterceptSpec(string) *manager.InterceptSpec

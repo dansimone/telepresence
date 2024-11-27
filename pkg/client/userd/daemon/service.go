@@ -360,7 +360,7 @@ func runAliveAndCancellation(ctx context.Context, cancel context.CancelFunc, dae
 
 func (s *service) cancelSessionReadLocked() {
 	if s.sessionCancel != nil {
-		if err := s.session.ClearIntercepts(s.sessionContext); err != nil {
+		if err := s.session.ClearIngestsAndIntercepts(s.sessionContext); err != nil {
 			dlog.Errorf(s.sessionContext, "failed to clear intercepts: %v", err)
 		}
 		s.sessionCancel()

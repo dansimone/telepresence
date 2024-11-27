@@ -607,13 +607,17 @@ func (s *session) getInfosForWorkloads(
 		}
 
 		var ok bool
-		if wlInfo.InterceptInfos, ok = iMap[name]; !ok && filter == rpc.ListRequest_INTERCEPTS {
-			return
+		filterMatch := rpc.ListRequest_EVERYTHING
+		if wlInfo.InterceptInfos, ok = iMap[name]; !ok {
+			filterMatch &= ^rpc.ListRequest_INTERCEPTS
 		}
-		if wlInfo.IngestInfos, ok = gMap[name]; !ok && filter == rpc.ListRequest_INGESTS {
-			return
+		if wlInfo.IngestInfos, ok = gMap[name]; !ok {
+			filterMatch &= ^rpc.ListRequest_INGESTS
 		}
-		if wlInfo.AgentVersion, ok = sMap[name]; !ok && filter == rpc.ListRequest_INSTALLED_AGENTS {
+		if wlInfo.AgentVersion, ok = sMap[name]; !ok {
+			filterMatch &= ^rpc.ListRequest_INSTALLED_AGENTS
+		}
+		if filter != 0 && filter&filterMatch == 0 {
 			return
 		}
 		wiMap[fmt.Sprintf("%s:%s.%s", kind, name, namespace)] = wlInfo
@@ -712,7 +716,7 @@ func (s *session) WorkloadInfoSnapshot(
 
 	var nss []string
 	var sMap map[string]string
-	if filter == rpc.ListRequest_INTERCEPTS || filter == rpc.ListRequest_INGESTS || filter == rpc.ListRequest_INSTALLED_AGENTS {
+	if filter&(rpc.ListRequest_INTERCEPTS|rpc.ListRequest_INGESTS|rpc.ListRequest_INSTALLED_AGENTS) != 0 {
 		// Special case, we don't care about namespaces in general. Instead, we use the connected namespace
 		nss = []string{s.Namespace}
 	} else {
@@ -949,7 +953,7 @@ func (s *session) Uninstall(ctx context.Context, ur *rpc.UninstallRequest) (*com
 		return nil, status.Error(codes.InvalidArgument, "invalid uninstall request")
 	}
 
-	_ = s.ClearIntercepts(ctx)
+	_ = s.ClearIngestsAndIntercepts(ctx)
 	clearAgentsConfigMap := func(ns string) error {
 		cm, err := loadAgentConfigMap(ns)
 		if err != nil {

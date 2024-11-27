@@ -32,6 +32,7 @@ func version() *cobra.Command {
 			ann.UserDaemon:        ann.Optional,
 			ann.UpdateCheckFormat: ann.Tel2,
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 }
 

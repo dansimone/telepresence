@@ -583,20 +583,27 @@ func (s *session) stopHandler(c context.Context, name, handlerContainer string, 
 // AddInterceptor associates the given intercept with a running process. This ensures that
 // the running process will be signalled when the intercept is removed.
 func (s *session) AddInterceptor(ctx context.Context, id string, ih *rpc.Interceptor) error {
+	added := false
 	s.currentInterceptsLock.Lock()
-	dlog.Debugf(ctx, "Adding ingest/intercept handler for id %s, %v", id, ih)
 	if ci, ok := s.currentIntercepts[id]; ok {
+		dlog.Debugf(ctx, "Adding intercept handler for id %s, %v", id, ih)
 		ci.pid = int(ih.Pid)
 		ci.handlerContainer = ih.ContainerName
+		added = true
 	} else {
 		if parts := strings.Split(id, "/"); len(parts) == 2 {
 			if cg, ok := s.currentIngests.Load(ingestKey{workload: parts[0], container: parts[1]}); ok {
+				dlog.Debugf(ctx, "Adding ingest handler for id %s, %v", id, ih)
 				cg.pid = int(ih.Pid)
 				cg.handlerContainer = ih.ContainerName
+				added = true
 			}
 		}
 	}
 	s.currentInterceptsLock.Unlock()
+	if !added {
+		dlog.Warnf(ctx, "Found no ingest or intercept handler for id %s, %v", id, ih)
+	}
 	return nil
 }
 
@@ -664,8 +671,8 @@ func (s *session) InterceptsForWorkload(workloadName, namespace string) []*manag
 	return wlis
 }
 
-// ClearIntercepts removes all intercepts.
-func (s *session) ClearIntercepts(c context.Context) error {
+// ClearIngestsAndIntercepts removes all intercepts.
+func (s *session) ClearIngestsAndIntercepts(c context.Context) error {
 	for _, ic := range s.getCurrentIntercepts() {
 		dlog.Debugf(c, "Clearing intercept %s", ic.Spec.Name)
 		err := s.removeIntercept(c, ic)
@@ -673,6 +680,11 @@ func (s *session) ClearIntercepts(c context.Context) error {
 			return err
 		}
 	}
+	s.currentIngests.Range(func(key ingestKey, ig *ingest) bool {
+		dlog.Debugf(c, "Clearing ingest %s", key)
+		s.stopHandler(c, key.workload+"/"+key.container, ig.handlerContainer, ig.pid)
+		return true
+	})
 	return nil
 }
 

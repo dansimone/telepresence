@@ -155,7 +155,7 @@ func (s *state) ensureAgent(parentCtx context.Context, wl k8sapi.Workload, exten
 		return nil, nil, err
 	}
 
-	sce, err := s.getOrCreateAgentConfig(ctx, wl, extended, spec)
+	sce, err := s.getOrCreateAgentConfig(ctx, wl, extended, spec, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -270,11 +270,24 @@ func (s *state) waitForAgentDepartures(ctx context.Context, wl k8sapi.Workload) 
 	}
 }
 
+func (s *state) GetOrGenerateAgentConfig(ctx context.Context, name, namespace string) (agentconfig.SidecarExt, error) {
+	wl, err := agentmap.GetWorkload(ctx, name, namespace, "")
+	if err != nil {
+		code := codes.Internal
+		if k8sErrors.IsNotFound(err) {
+			code = codes.NotFound
+		}
+		return nil, status.Error(code, err.Error())
+	}
+	return s.getOrCreateAgentConfig(ctx, wl, false, nil, true)
+}
+
 func (s *state) getOrCreateAgentConfig(
 	ctx context.Context,
 	wl k8sapi.Workload,
 	extended bool,
 	spec *managerrpc.InterceptSpec,
+	dryRun bool,
 ) (sce agentconfig.SidecarExt, err error) {
 	enabled, err := checkInterceptAnnotations(wl)
 	if err != nil {
@@ -332,6 +345,10 @@ func (s *state) getOrCreateAgentConfig(
 				doUpdate = true
 			}
 		}
+		if dryRun {
+			return false, nil
+		}
+
 		if doUpdate {
 			if cmFound {
 				// The pods for this workload be killed once the new updated sidecar

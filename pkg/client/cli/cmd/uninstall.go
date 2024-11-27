@@ -26,8 +26,9 @@ func uninstall() *cobra.Command {
 		Use:  "uninstall [flags] { --agent <agents...> | --all-agents }",
 		Args: ui.args,
 
-		Short: "Uninstall telepresence agents",
-		RunE:  ui.run,
+		Short:             "Uninstall telepresence agents",
+		RunE:              ui.run,
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	flags := cmd.Flags()
 

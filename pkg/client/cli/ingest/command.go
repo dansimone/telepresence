@@ -2,9 +2,11 @@ package ingest
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/spf13/cobra"
 
+	"github.com/telepresenceio/telepresence/v2/pkg/agentconfig"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/connect"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/docker"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/env"
@@ -39,6 +41,8 @@ func (c *Command) AddFlags(cmd *cobra.Command) {
 	c.MountFlags.AddFlags(flagSet, true)
 	c.DockerFlags.AddFlags(flagSet, "ingested")
 	flagSet.StringVar(&c.WaitMessage, "wait-message", "", "Message to print when ingest handler has started")
+
+	_ = cmd.RegisterFlagCompletionFunc("container", AutocompleteContainer)
 }
 
 func (c *Command) Validate(cmd *cobra.Command, positional []string) error {
@@ -66,4 +70,30 @@ func (c *Command) Run(cmd *cobra.Command, positional []string) error {
 	}
 	ctx := dos.WithStdio(cmd.Context(), cmd)
 	return NewState(c, c.MountFlags.ValidateConnected(ctx)).Run(ctx)
+}
+
+func AutocompleteContainer(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	ctx, s, err := connect.GetOptionalSession(cmd)
+	if s == nil || err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	sc, err := s.GetAgentConfig(ctx, args[0])
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	css := make([]string, 0, len(sc.Containers))
+	var svcName string
+	if sf := cmd.Flags().Lookup("service"); sf != nil && sf.Changed {
+		// Only include containers matching this service
+		svcName = sf.Value.String()
+	}
+	for _, c := range sc.Containers {
+		if svcName == "" || slices.ContainsFunc(c.Intercepts, func(ix *agentconfig.Intercept) bool { return ix.ServiceName == svcName }) {
+			css = append(css, c.Name)
+		}
+	}
+	return css, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
 }

@@ -578,6 +578,15 @@ message AgentPodInfoSnapshot {
   repeated AgentPodInfo agents = 1;
 }
 
+message AgentConfigRequest {
+  SessionInfo session = 1;
+  string name = 2;
+}
+
+message AgentConfigResponse {
+  bytes data = 1;
+}
+
 message TunnelMetrics {
   string client_session_id = 1;
 
@@ -689,6 +698,9 @@ service Manager {
 
   // GetAgentImageFQN returns fully qualified name of the image that is injected into intercepted pods.
   rpc GetAgentImageFQN(google.protobuf.Empty) returns (AgentImageFQN);
+
+  // GetAgentConfig returns the agent configuration for a specific workload.
+  rpc GetAgentConfig(AgentConfigRequest) returns (AgentConfigResponse);
 
   // GetLicense returns the License information (the license itself and
   // domain that granted it) known to the manager.

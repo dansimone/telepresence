@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -114,6 +115,8 @@ func InitRequest(cmd *cobra.Command) *CobraRequest {
 	cr.kubeFlagSet = pflag.NewFlagSet("Kubernetes flags", 0)
 	cr.kubeConfig.AddFlags(cr.kubeFlagSet)
 	flags.AddFlagSet(cr.kubeFlagSet)
+	_ = cmd.RegisterFlagCompletionFunc("mapped-namespaces", cr.autocompleteNamespaces)
+	_ = cmd.RegisterFlagCompletionFunc("manager-namespace", cr.autocompleteNamespace)
 	_ = cmd.RegisterFlagCompletionFunc("namespace", cr.autocompleteNamespace)
 	_ = cmd.RegisterFlagCompletionFunc("cluster", cr.autocompleteCluster)
 	return &cr
@@ -384,19 +387,51 @@ func (cr *CobraRequest) GetAllNamespaces(cmd *cobra.Command) ([]string, error) {
 }
 
 func (cr *CobraRequest) autocompleteNamespace(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	dlog.Debugf(cmd.Context(), "autocompleteNamespace %q", toComplete)
+	var stripFunc func(s string) bool
+	if toComplete != "" {
+		stripFunc = func(s string) bool { return !strings.HasPrefix(s, toComplete) }
+	}
+	return cr.autocompleteNamespaceFunc(cmd, stripFunc)
+}
+
+func (cr *CobraRequest) autocompleteNamespaces(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	var stripFunc func(s string) bool
+	var pfx string
+	if toComplete != "" {
+		found := strings.Split(toComplete, ",")
+		ll := len(found) - 1
+		last := found[ll]
+		if ll > 0 {
+			pfx = strings.Join(found[:ll], ",") + ","
+			if last != "" {
+				stripFunc = func(s string) bool { return slices.Contains(found, s) || !strings.HasPrefix(s, last) }
+			} else {
+				stripFunc = func(s string) bool { return slices.Contains(found, s) }
+			}
+		} else {
+			stripFunc = func(s string) bool { return !strings.HasPrefix(s, last) }
+		}
+	}
+	nss, d := cr.autocompleteNamespaceFunc(cmd, stripFunc)
+	if pfx != "" {
+		for i, ns := range nss {
+			nss[i] = pfx + ns
+		}
+	}
+	return nss, d
+}
+
+func (cr *CobraRequest) autocompleteNamespaceFunc(cmd *cobra.Command, stripFunc func(s string) bool) ([]string, cobra.ShellCompDirective) {
 	ctx := cmd.Context()
 	nss, err := cr.GetAllNamespaces(cmd)
 	if err != nil {
 		dlog.Error(ctx, err)
 		return nil, cobra.ShellCompDirectiveError
 	}
-
-	var ctName string
-	if cp := cr.kubeConfig.Context; cp != nil {
-		ctName = *cp
+	if stripFunc != nil {
+		nss = slices.DeleteFunc(nss, stripFunc)
 	}
-	dlog.Debugf(ctx, "namespace completion: context %q, %q", ctName, toComplete)
-
 	return nss, cobra.ShellCompDirectiveNoFileComp
 }
 
@@ -407,12 +442,6 @@ func (cr *CobraRequest) autocompleteCluster(cmd *cobra.Command, _ []string, toCo
 		dlog.Error(ctx, err)
 		return nil, cobra.ShellCompDirectiveError
 	}
-
-	var ctName string
-	if cp := cr.kubeConfig.Context; cp != nil {
-		ctName = *cp
-	}
-	dlog.Debugf(ctx, "namespace completion: context %q, %q", ctName, toComplete)
 
 	cxl := config.Clusters
 	cs := make([]string, len(cxl))

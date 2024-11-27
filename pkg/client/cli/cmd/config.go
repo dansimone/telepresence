@@ -1,12 +1,9 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/telepresenceio/telepresence/rpc/v2/connector"
 	"github.com/telepresenceio/telepresence/v2/pkg/client"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/ann"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli/connect"
@@ -34,34 +31,10 @@ func configView() *cobra.Command {
 		Annotations: map[string]string{
 			ann.Session: ann.Optional,
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	cmd.Flags().BoolP(clientOnlyFlag, "c", false, "Only view config from client file.")
 	return cmd
-}
-
-// GetCommandKubeConfig will return the fully resolved client.Kubeconfig for the given command.
-func GetCommandKubeConfig(cmd *cobra.Command) (context.Context, *client.Kubeconfig, error) {
-	ctx := cmd.Context()
-	uc := daemon.GetUserClient(ctx)
-	var kc *client.Kubeconfig
-	var err error
-	if uc != nil && !cmd.Flag("context").Changed {
-		// Get the context that we're currently connected to.
-		var ci *connector.ConnectInfo
-		ci, err = uc.Status(ctx, &empty.Empty{})
-		if err == nil {
-			ctx, kc, err = client.NewKubeconfig(ctx, map[string]string{"context": ci.ClusterContext}, "")
-		}
-	} else {
-		if daemon.GetRequest(ctx) == nil {
-			if ctx, err = daemon.WithDefaultRequest(ctx, cmd); err != nil {
-				return ctx, nil, err
-			}
-		}
-		rq := daemon.GetRequest(ctx)
-		ctx, kc, err = client.NewKubeconfig(ctx, rq.KubeFlags, rq.ManagerNamespace)
-	}
-	return ctx, kc, err
 }
 
 func runConfigView(cmd *cobra.Command, _ []string) error {
@@ -84,7 +57,7 @@ func runConfigView(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 
-		ctx, _, err := GetCommandKubeConfig(cmd)
+		ctx, _, err := daemon.GetCommandKubeConfig(cmd)
 		if err != nil {
 			return err
 		}

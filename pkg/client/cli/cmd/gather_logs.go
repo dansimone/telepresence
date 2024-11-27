@@ -70,6 +70,7 @@ telepresence gather-logs --daemons=None
 		Annotations: map[string]string{
 			ann.Session: ann.Optional,
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	flags := cmd.Flags()
 	flags.StringVarP(&gl.outputFile, "output-file", "o", "", "The file you want to output the logs to.")

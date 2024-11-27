@@ -46,7 +46,7 @@ func leave() *cobra.Command {
 			}
 			ctx := cmd.Context()
 			userD := daemon.GetUserClient(ctx)
-			resp, err := userD.List(ctx, &connector.ListRequest{Filter: connector.ListRequest_INGESTS})
+			resp, err := userD.List(ctx, &connector.ListRequest{Filter: connector.ListRequest_INTERCEPTS | connector.ListRequest_INGESTS})
 			if err != nil {
 				return nil, shellCompDir | cobra.ShellCompDirectiveError
 			}

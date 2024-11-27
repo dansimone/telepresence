@@ -42,7 +42,7 @@ func dockerRunCmd() *cobra.Command {
 		SilenceUsage:          true,
 		DisableFlagParsing:    true,
 		DisableFlagsInUseLine: true,
-		DisableSuggestions:    true,
+		ValidArgsFunction:     cliDocker.AutocompleteRun,
 	}
 	return cmd
 }

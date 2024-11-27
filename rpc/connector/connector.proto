@@ -118,6 +118,9 @@ service Connector {
 
   // SetDNSMappings sets the Mappings field of DNSConfig.
   rpc SetDNSMappings(daemon.SetDNSMappingsRequest) returns (google.protobuf.Empty);
+
+  // GetAgentConfig returns the agent configuration for a specific workload.
+  rpc GetAgentConfig(manager.AgentConfigRequest) returns (manager.AgentConfigResponse);
 }
 
 // ManagerProxy is a small subset of the traffic-manager API that the
@@ -278,13 +281,14 @@ message CreateInterceptRequest {
 }
 
 message ListRequest {
+  // Bitmap filter
   enum Filter {
     UNSPECIFIED = 0;
     INTERCEPTS = 1;
     INGESTS = 2;
-    INSTALLED_AGENTS = 3;
-    INTERCEPTABLE = 4;
-    EVERYTHING = 5;
+    INSTALLED_AGENTS = 4;
+    INTERCEPTABLE = 8;
+    EVERYTHING = 15;
   }
   Filter filter = 1;
 

@@ -111,6 +111,11 @@ items:
           The Helm chart value `workloads` now supports the kinds `deployments.enabled`, `statefulSets.enabled`, `replicaSets.enabled`.
           and `rollouts.enabled`. All except `rollouts` are enabled by default. The traffic-manager will ignore workloads, and
           Telepresence will not be able to intercept them, if the `enabled` of the corresponding kind is set to `false`.
+      - type: feature
+        title: Improved command auto-completion
+        body: >-
+          The auto-completion of namespaces, services, and containers have been added where appropriate, and the default
+          file auto completion has been removed from most commands.
       - type: change
         title: During an intercept, the local port defaults to the targeted port of the intercepted container instead of 8080.
         body: >-

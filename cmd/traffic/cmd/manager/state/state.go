@@ -51,6 +51,7 @@ type State interface {
 	CountTunnelEgress() uint64
 	ExpireSessions(context.Context, time.Time, time.Time)
 	GetAgent(sessionID string) *rpc.AgentInfo
+	GetOrGenerateAgentConfig(ctx context.Context, name, namespace string) (agentconfig.SidecarExt, error)
 	GetActiveAgent(sessionID string) *rpc.AgentInfo
 	GetAllClients() map[string]*rpc.ClientInfo
 	GetClient(sessionID string) *rpc.ClientInfo

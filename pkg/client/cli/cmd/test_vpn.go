@@ -16,6 +16,7 @@ func testVPN() *cobra.Command {
 				" Please see https://www.telepresence.io/docs/reference/vpn" +
 				" to learn how to configure telepresence for your VPN.")
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	return cmd
 }

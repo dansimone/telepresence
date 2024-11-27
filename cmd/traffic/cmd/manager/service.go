@@ -160,6 +160,26 @@ func (s *service) GetAgentImageFQN(ctx context.Context, _ *empty.Empty) (*rpc.Ag
 	return nil, status.Error(codes.Unavailable, "")
 }
 
+func (s *service) GetAgentConfig(ctx context.Context, request *rpc.AgentConfigRequest) (*rpc.AgentConfigResponse, error) {
+	dlog.Debug(ctx, "GetAgentConfig called")
+	ctx = managerutil.WithSessionInfo(ctx, request.Session)
+	sessionID := request.GetSession().GetSessionId()
+	clientInfo := s.state.GetClient(sessionID)
+	if clientInfo == nil {
+		return nil, status.Errorf(codes.NotFound, "Client session %q not found", sessionID)
+	}
+	scs, err := s.State().GetOrGenerateAgentConfig(ctx, request.Name, clientInfo.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	r := rpc.AgentConfigResponse{}
+	r.Data, err = scs.Marshal()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &r, nil
+}
+
 func (s *service) GetLicense(context.Context, *empty.Empty) (*rpc.License, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }

@@ -40,6 +40,7 @@ func list() *cobra.Command {
 		Annotations: map[string]string{
 			ann.Session: ann.Required,
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	flags := cmd.Flags()
 	flags.BoolVarP(&s.onlyIntercepts, "intercepts", "i", false, "intercepts only")

@@ -552,6 +552,15 @@ func (s *service) AgentImageFQN(ctx context.Context, empty *emptypb.Empty) (fqn 
 	return fqn, err
 }
 
+func (s *service) GetAgentConfig(ctx context.Context, request *manager.AgentConfigRequest) (rsp *manager.AgentConfigResponse, err error) {
+	err = s.WithSession(ctx, "AgentConfig", func(ctx context.Context, session userd.Session) error {
+		request.Session = session.SessionInfo()
+		rsp, err = session.ManagerClient().GetAgentConfig(ctx, request)
+		return err
+	})
+	return rsp, err
+}
+
 func (s *service) GetClusterSubnets(ctx context.Context, _ *empty.Empty) (cs *rpc.ClusterSubnets, err error) {
 	podSubnets := []*manager.IPNet{}
 	svcSubnets := []*manager.IPNet{}

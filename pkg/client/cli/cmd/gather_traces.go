@@ -25,8 +25,9 @@ func gatherTraces() *cobra.Command {
 		Annotations: map[string]string{
 			ann.UserDaemon: ann.Required,
 		},
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	cmd.Flags().Int32VarP(&tr.RemotePort, "port", "p", 15766,
 		"The remote port where traffic manager and agent are exposing traces."+

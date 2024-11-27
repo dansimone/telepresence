@@ -54,6 +54,7 @@ telepresence's webhook injector configure the traffic agents on demand.`,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return errcat.User.New("please run genyaml as \"genyaml config\", \"genyaml container\", \"genyaml initcontainer\", or \"genyaml volume\"")
 		},
+		ValidArgsFunction: cobra.NoFileCompletions,
 	}
 	flags := cmd.PersistentFlags()
 	flags.StringVarP(&info.outputFile, "output", "o", "-",

@@ -26,6 +26,7 @@ const _ = grpc.SupportPackageIsVersion8
 const (
 	Manager_Version_FullMethodName                   = "/telepresence.manager.Manager/Version"
 	Manager_GetAgentImageFQN_FullMethodName          = "/telepresence.manager.Manager/GetAgentImageFQN"
+	Manager_GetAgentConfig_FullMethodName            = "/telepresence.manager.Manager/GetAgentConfig"
 	Manager_GetLicense_FullMethodName                = "/telepresence.manager.Manager/GetLicense"
 	Manager_CanConnectAmbassadorCloud_FullMethodName = "/telepresence.manager.Manager/CanConnectAmbassadorCloud"
 	Manager_GetCloudConfig_FullMethodName            = "/telepresence.manager.Manager/GetCloudConfig"
@@ -68,6 +69,8 @@ type ManagerClient interface {
 	Version(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VersionInfo2, error)
 	// GetAgentImageFQN returns fully qualified name of the image that is injected into intercepted pods.
 	GetAgentImageFQN(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AgentImageFQN, error)
+	// GetAgentConfig returns the agent configuration for a specific workload.
+	GetAgentConfig(ctx context.Context, in *AgentConfigRequest, opts ...grpc.CallOption) (*AgentConfigResponse, error)
 	// GetLicense returns the License information (the license itself and
 	// domain that granted it) known to the manager.
 	GetLicense(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*License, error)
@@ -198,6 +201,16 @@ func (c *managerClient) GetAgentImageFQN(ctx context.Context, in *emptypb.Empty,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AgentImageFQN)
 	err := c.cc.Invoke(ctx, Manager_GetAgentImageFQN_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *managerClient) GetAgentConfig(ctx context.Context, in *AgentConfigRequest, opts ...grpc.CallOption) (*AgentConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AgentConfigResponse)
+	err := c.cc.Invoke(ctx, Manager_GetAgentConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -761,6 +774,8 @@ type ManagerServer interface {
 	Version(context.Context, *emptypb.Empty) (*VersionInfo2, error)
 	// GetAgentImageFQN returns fully qualified name of the image that is injected into intercepted pods.
 	GetAgentImageFQN(context.Context, *emptypb.Empty) (*AgentImageFQN, error)
+	// GetAgentConfig returns the agent configuration for a specific workload.
+	GetAgentConfig(context.Context, *AgentConfigRequest) (*AgentConfigResponse, error)
 	// GetLicense returns the License information (the license itself and
 	// domain that granted it) known to the manager.
 	GetLicense(context.Context, *emptypb.Empty) (*License, error)
@@ -879,6 +894,9 @@ func (UnimplementedManagerServer) Version(context.Context, *emptypb.Empty) (*Ver
 }
 func (UnimplementedManagerServer) GetAgentImageFQN(context.Context, *emptypb.Empty) (*AgentImageFQN, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAgentImageFQN not implemented")
+}
+func (UnimplementedManagerServer) GetAgentConfig(context.Context, *AgentConfigRequest) (*AgentConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAgentConfig not implemented")
 }
 func (UnimplementedManagerServer) GetLicense(context.Context, *emptypb.Empty) (*License, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLicense not implemented")
@@ -1021,6 +1039,24 @@ func _Manager_GetAgentImageFQN_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ManagerServer).GetAgentImageFQN(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Manager_GetAgentConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AgentConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagerServer).GetAgentConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Manager_GetAgentConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagerServer).GetAgentConfig(ctx, req.(*AgentConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1650,6 +1686,10 @@ var Manager_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAgentImageFQN",
 			Handler:    _Manager_GetAgentImageFQN_Handler,
+		},
+		{
+			MethodName: "GetAgentConfig",
+			Handler:    _Manager_GetAgentConfig_Handler,
 		},
 		{
 			MethodName: "GetLicense",

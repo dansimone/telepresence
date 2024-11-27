@@ -54,6 +54,7 @@ const (
 	Connector_GetConfig_FullMethodName               = "/telepresence.connector.Connector/GetConfig"
 	Connector_SetDNSExcludes_FullMethodName          = "/telepresence.connector.Connector/SetDNSExcludes"
 	Connector_SetDNSMappings_FullMethodName          = "/telepresence.connector.Connector/SetDNSMappings"
+	Connector_GetAgentConfig_FullMethodName          = "/telepresence.connector.Connector/GetAgentConfig"
 )
 
 // ConnectorClient is the client API for Connector service.
@@ -138,6 +139,8 @@ type ConnectorClient interface {
 	SetDNSExcludes(ctx context.Context, in *daemon.SetDNSExcludesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// SetDNSMappings sets the Mappings field of DNSConfig.
 	SetDNSMappings(ctx context.Context, in *daemon.SetDNSMappingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetAgentConfig returns the agent configuration for a specific workload.
+	GetAgentConfig(ctx context.Context, in *manager.AgentConfigRequest, opts ...grpc.CallOption) (*manager.AgentConfigResponse, error)
 }
 
 type connectorClient struct {
@@ -481,6 +484,16 @@ func (c *connectorClient) SetDNSMappings(ctx context.Context, in *daemon.SetDNSM
 	return out, nil
 }
 
+func (c *connectorClient) GetAgentConfig(ctx context.Context, in *manager.AgentConfigRequest, opts ...grpc.CallOption) (*manager.AgentConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(manager.AgentConfigResponse)
+	err := c.cc.Invoke(ctx, Connector_GetAgentConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ConnectorServer is the server API for Connector service.
 // All implementations must embed UnimplementedConnectorServer
 // for forward compatibility
@@ -563,6 +576,8 @@ type ConnectorServer interface {
 	SetDNSExcludes(context.Context, *daemon.SetDNSExcludesRequest) (*emptypb.Empty, error)
 	// SetDNSMappings sets the Mappings field of DNSConfig.
 	SetDNSMappings(context.Context, *daemon.SetDNSMappingsRequest) (*emptypb.Empty, error)
+	// GetAgentConfig returns the agent configuration for a specific workload.
+	GetAgentConfig(context.Context, *manager.AgentConfigRequest) (*manager.AgentConfigResponse, error)
 	mustEmbedUnimplementedConnectorServer()
 }
 
@@ -662,6 +677,9 @@ func (UnimplementedConnectorServer) SetDNSExcludes(context.Context, *daemon.SetD
 }
 func (UnimplementedConnectorServer) SetDNSMappings(context.Context, *daemon.SetDNSMappingsRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetDNSMappings not implemented")
+}
+func (UnimplementedConnectorServer) GetAgentConfig(context.Context, *manager.AgentConfigRequest) (*manager.AgentConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAgentConfig not implemented")
 }
 func (UnimplementedConnectorServer) mustEmbedUnimplementedConnectorServer() {}
 
@@ -1237,6 +1255,24 @@ func _Connector_SetDNSMappings_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Connector_GetAgentConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(manager.AgentConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConnectorServer).GetAgentConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Connector_GetAgentConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConnectorServer).GetAgentConfig(ctx, req.(*manager.AgentConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Connector_ServiceDesc is the grpc.ServiceDesc for Connector service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1363,6 +1399,10 @@ var Connector_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetDNSMappings",
 			Handler:    _Connector_SetDNSMappings_Handler,
+		},
+		{
+			MethodName: "GetAgentConfig",
+			Handler:    _Connector_GetAgentConfig_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

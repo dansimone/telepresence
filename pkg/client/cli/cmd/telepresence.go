@@ -42,6 +42,7 @@ func Telepresence(ctx context.Context) *cobra.Command {
 		SilenceErrors:      true, // main() will handle it after .ExecuteContext() returns
 		SilenceUsage:       true, // our FlagErrorFunc will handle it
 		DisableFlagParsing: true, // Bc of the legacyCommand parsing, see legacy_command.go
+		ValidArgsFunction:  cobra.NoFileCompletions,
 	}
 	rootCmd.SetContext(ctx)
 	AddSubCommands(rootCmd)

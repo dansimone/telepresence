@@ -17,6 +17,7 @@ func curlCmd() *cobra.Command {
 			ann.Session: ann.Optional,
 		},
 		RunE:                  runCurl,
+		ValidArgsFunction:     cobra.NoFileCompletions,
 		SilenceErrors:         true,
 		SilenceUsage:          true,
 		DisableFlagParsing:    true,
