@@ -124,6 +124,10 @@ type BaseConfig struct {
 	ClusterV         Cluster         `json:"cluster,omitzero"`
 	DNSV             DNS             `json:"dns,omitzero"`
 	RoutingV         Routing         `json:"routing,omitzero"`
+
+	// This is actually a traffic-manager setting, and controls
+	// the agent's connection to the client.
+	DummyConnectionTTL time.Duration `json:"connectionTTL,omitzero"`
 }
 
 func (c *BaseConfig) OSSpecific() *OSSpecificConfig {
@@ -818,12 +822,18 @@ func (cc *Cluster) UnmarshalJSONV2(in *jsontext.Decoder, opts json.Options) erro
 func (r *Routing) merge(o *Routing) {
 	if len(o.AlsoProxy) > 0 {
 		r.AlsoProxy = o.AlsoProxy
+	} else if len(o.OldAlsoProxy) > 0 {
+		r.AlsoProxy = o.OldAlsoProxy
 	}
 	if len(o.NeverProxy) > 0 {
 		r.NeverProxy = o.NeverProxy
+	} else if len(o.OldNeverProxy) > 0 {
+		r.NeverProxy = o.OldNeverProxy
 	}
 	if len(o.AllowConflicting) > 0 {
 		r.AllowConflicting = o.AllowConflicting
+	} else if len(o.OldAllowConflicting) > 0 {
+		r.AllowConflicting = o.OldAllowConflicting
 	}
 	if len(o.Subnets) > 0 {
 		r.Subnets = o.Subnets
@@ -995,10 +1005,15 @@ func LoadConfig(c context.Context) (cfg Config, err error) {
 
 type Routing struct {
 	Subnets                []netip.Prefix `json:"subnets,omitempty"`
-	AlsoProxy              []netip.Prefix `json:"alsoProxy,omitempty"`
-	NeverProxy             []netip.Prefix `json:"neverProxy,omitempty"`
-	AllowConflicting       []netip.Prefix `json:"allowConflicting,omitempty"`
+	AlsoProxy              []netip.Prefix `json:"alsoProxySubnets,omitempty"`
+	NeverProxy             []netip.Prefix `json:"neverProxySubnets,omitempty"`
+	AllowConflicting       []netip.Prefix `json:"allowConflictingSubnets,omitempty"`
 	RecursionBlockDuration time.Duration  `json:"recursionBlockDuration,omitempty"`
+
+	// For backward compatibility.
+	OldAlsoProxy        []netip.Prefix `json:"alsoProxy,omitempty"`
+	OldNeverProxy       []netip.Prefix `json:"neverProxy,omitempty"`
+	OldAllowConflicting []netip.Prefix `json:"allowConflicting,omitempty"`
 }
 
 // RoutingSnake is the same as Routing but with snake_case json/yaml names.
