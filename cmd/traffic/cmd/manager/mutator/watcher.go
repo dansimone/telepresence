@@ -560,32 +560,24 @@ func (c *configWatcher) StartWatchers(ctx context.Context) error {
 			return err
 		}
 	}
-	if c.dps != nil {
-		for _, si := range c.dps {
-			if err := c.watchWorkloads(ctx, si); err != nil {
-				return err
-			}
+	for _, si := range c.dps {
+		if err := c.watchWorkloads(ctx, si); err != nil {
+			return err
 		}
 	}
-	if c.rss != nil {
-		for _, si := range c.rss {
-			if err := c.watchWorkloads(ctx, si); err != nil {
-				return err
-			}
+	for _, si := range c.rss {
+		if err := c.watchWorkloads(ctx, si); err != nil {
+			return err
 		}
 	}
-	if c.sss != nil {
-		for _, si := range c.sss {
-			if err := c.watchWorkloads(ctx, si); err != nil {
-				return err
-			}
+	for _, si := range c.sss {
+		if err := c.watchWorkloads(ctx, si); err != nil {
+			return err
 		}
 	}
-	if c.rls != nil {
-		for _, si := range c.rls {
-			if err := c.watchWorkloads(ctx, si); err != nil {
-				return err
-			}
+	for _, si := range c.rls {
+		if err := c.watchWorkloads(ctx, si); err != nil {
+			return err
 		}
 	}
 	for _, ci := range c.cms {
