@@ -1133,20 +1133,20 @@ func (s *session) localWorkloadsWatcher(ctx context.Context, namespace string, s
 		fc = informer.GetFactory(ctx, namespace)
 	}
 
-	enabledWorkloadKinds := make([]workload.WorkloadKind, len(knownWorkloadKinds.Kinds))
+	enabledWorkloadKinds := make([]workload.Kind, len(knownWorkloadKinds.Kinds))
 	for i, kind := range knownWorkloadKinds.Kinds {
 		switch kind {
 		case manager.WorkloadInfo_DEPLOYMENT:
-			enabledWorkloadKinds[i] = workload.DeploymentWorkloadKind
+			enabledWorkloadKinds[i] = workload.DeploymentKind
 			workload.StartDeployments(ctx, namespace)
 		case manager.WorkloadInfo_REPLICASET:
-			enabledWorkloadKinds[i] = workload.ReplicaSetWorkloadKind
+			enabledWorkloadKinds[i] = workload.ReplicaSetKind
 			workload.StartReplicaSets(ctx, namespace)
 		case manager.WorkloadInfo_STATEFULSET:
-			enabledWorkloadKinds[i] = workload.StatefulSetWorkloadKind
+			enabledWorkloadKinds[i] = workload.StatefulSetKind
 			workload.StartStatefulSets(ctx, namespace)
 		case manager.WorkloadInfo_ROLLOUT:
-			enabledWorkloadKinds[i] = workload.RolloutWorkloadKind
+			enabledWorkloadKinds[i] = workload.RolloutKind
 			workload.StartRollouts(ctx, namespace)
 			af := fc.GetArgoRolloutsInformerFactory()
 			af.Start(ctx.Done())

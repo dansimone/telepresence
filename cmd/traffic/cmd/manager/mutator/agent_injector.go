@@ -150,13 +150,13 @@ func (a *agentInjector) Inject(ctx context.Context, req *admission.AdmissionRequ
 		supportedKinds := make([]string, len(enabledWorkloads))
 		for i, wlKind := range enabledWorkloads {
 			switch wlKind {
-			case workload.DeploymentWorkloadKind:
+			case workload.DeploymentKind:
 				supportedKinds[i] = "Deployment"
-			case workload.ReplicaSetWorkloadKind:
+			case workload.ReplicaSetKind:
 				supportedKinds[i] = "ReplicaSet"
-			case workload.StatefulSetWorkloadKind:
+			case workload.StatefulSetKind:
 				supportedKinds[i] = "StatefulSet"
-			case workload.RolloutWorkloadKind:
+			case workload.RolloutKind:
 				supportedKinds[i] = "Rollout"
 			}
 		}

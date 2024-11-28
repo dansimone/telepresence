@@ -209,7 +209,7 @@ func (wf *workloadInfoWatcher) addEvent(
 	wf.resetTicker()
 }
 
-func (wf *workloadInfoWatcher) handleWorkloadsSnapshot(ctx context.Context, wes []workload.WorkloadEvent, initial bool) {
+func (wf *workloadInfoWatcher) handleWorkloadsSnapshot(ctx context.Context, wes []workload.Event, initial bool) {
 	if len(wes) == 0 {
 		if initial {
 			// The initial snapshot may be empty, but must be sent anyway.

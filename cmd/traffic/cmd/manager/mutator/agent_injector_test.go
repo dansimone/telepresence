@@ -772,7 +772,7 @@ func TestTrafficAgentConfigGenerator(t *testing.T) {
 			AgentPort:                9900,
 			AgentAppProtocolStrategy: appProtoStrategy,
 
-			EnabledWorkloadKinds: []workload.WorkloadKind{workload.DeploymentWorkloadKind, workload.StatefulSetWorkloadKind, workload.ReplicaSetWorkloadKind},
+			EnabledWorkloadKinds: []workload.Kind{workload.DeploymentKind, workload.StatefulSetKind, workload.ReplicaSetKind},
 		}
 
 		ctx := dlog.NewTestContext(t, false)
@@ -1834,7 +1834,7 @@ func TestTrafficAgentInjector(t *testing.T) {
 				AgentPort:         9900,
 				AgentInjectPolicy: agentconfig.WhenEnabled,
 
-				EnabledWorkloadKinds: []workload.WorkloadKind{workload.DeploymentWorkloadKind, workload.StatefulSetWorkloadKind, workload.ReplicaSetWorkloadKind},
+				EnabledWorkloadKinds: []workload.Kind{workload.DeploymentKind, workload.StatefulSetKind, workload.ReplicaSetKind},
 			}
 			ctx = managerutil.WithEnv(ctx, env)
 			agentmap.GeneratorConfigFunc = env.GeneratorConfig
@@ -1915,13 +1915,13 @@ func generateForPod(t *testing.T, ctx context.Context, pod *core.Pod, gc agentma
 	supportedKinds := make([]string, 0, 4)
 	for _, wlKind := range managerutil.GetEnv(ctx).EnabledWorkloadKinds {
 		switch wlKind {
-		case workload.DeploymentWorkloadKind:
+		case workload.DeploymentKind:
 			supportedKinds = append(supportedKinds, "Deployment")
-		case workload.ReplicaSetWorkloadKind:
+		case workload.ReplicaSetKind:
 			supportedKinds = append(supportedKinds, "ReplicaSet")
-		case workload.StatefulSetWorkloadKind:
+		case workload.StatefulSetKind:
 			supportedKinds = append(supportedKinds, "StatefulSet")
-		case workload.RolloutWorkloadKind:
+		case workload.RolloutKind:
 			supportedKinds = append(supportedKinds, "Rollout")
 		}
 	}

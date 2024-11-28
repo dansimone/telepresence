@@ -54,7 +54,7 @@ func TestEnvconfig(t *testing.T) {
 		PodCIDRStrategy:          "auto",
 		PodIP:                    netip.AddrFrom4([4]byte{203, 0, 113, 18}),
 		ServerPort:               8081,
-		EnabledWorkloadKinds:     []workload.WorkloadKind{workload.DeploymentWorkloadKind, workload.StatefulSetWorkloadKind, workload.ReplicaSetWorkloadKind},
+		EnabledWorkloadKinds:     []workload.Kind{workload.DeploymentKind, workload.StatefulSetKind, workload.ReplicaSetKind},
 	}
 
 	testcases := map[string]struct {

@@ -30,22 +30,22 @@ const (
 	EventTypeDelete
 )
 
-type WorkloadEvent struct {
+type Event struct {
 	Type     EventType
 	Workload k8sapi.Workload
 }
 
-type WorkloadKind string
+type Kind string
 
 const (
-	DeploymentWorkloadKind  WorkloadKind = "Deployment"
-	StatefulSetWorkloadKind WorkloadKind = "StatefulSet"
-	ReplicaSetWorkloadKind  WorkloadKind = "ReplicaSet"
-	RolloutWorkloadKind     WorkloadKind = "Rollout"
+	DeploymentKind  Kind = "Deployment"
+	StatefulSetKind Kind = "StatefulSet"
+	ReplicaSetKind  Kind = "ReplicaSet"
+	RolloutKind     Kind = "Rollout"
 )
 
-func (w *WorkloadKind) IsValid() bool {
-	return w != nil && slices.Contains([]WorkloadKind{DeploymentWorkloadKind, StatefulSetWorkloadKind, ReplicaSetWorkloadKind, RolloutWorkloadKind}, *w)
+func (w *Kind) IsValid() bool {
+	return w != nil && slices.Contains([]Kind{DeploymentKind, StatefulSetKind, ReplicaSetKind, RolloutKind}, *w)
 }
 
 func (e EventType) String() string {
@@ -62,26 +62,26 @@ func (e EventType) String() string {
 }
 
 type Watcher interface {
-	Subscribe(ctx context.Context) <-chan []WorkloadEvent
+	Subscribe(ctx context.Context) <-chan []Event
 }
 
 type watcher struct {
 	sync.Mutex
 	namespace            string
-	subscriptions        map[uuid.UUID]chan<- []WorkloadEvent
+	subscriptions        map[uuid.UUID]chan<- []Event
 	timer                *time.Timer
-	events               []WorkloadEvent
-	enabledWorkloadKinds []WorkloadKind
+	events               []Event
+	enabledWorkloadKinds []Kind
 }
 
-func NewWatcher(ctx context.Context, ns string, enabledWorkloadKinds []WorkloadKind) (Watcher, error) {
+func NewWatcher(ctx context.Context, ns string, enabledWorkloadKinds []Kind) (Watcher, error) {
 	w := new(watcher)
 	w.namespace = ns
 	w.enabledWorkloadKinds = enabledWorkloadKinds
-	w.subscriptions = make(map[uuid.UUID]chan<- []WorkloadEvent)
+	w.subscriptions = make(map[uuid.UUID]chan<- []Event)
 	w.timer = time.AfterFunc(time.Duration(math.MaxInt64), func() {
 		w.Lock()
-		ss := make([]chan<- []WorkloadEvent, len(w.subscriptions))
+		ss := make([]chan<- []Event, len(w.subscriptions))
 		i := 0
 		for _, sub := range w.subscriptions {
 			ss[i] = sub
@@ -106,17 +106,17 @@ func NewWatcher(ctx context.Context, ns string, enabledWorkloadKinds []WorkloadK
 	return w, nil
 }
 
-func hasValidReplicasetOwner(wl k8sapi.Workload, enabledWorkloadKinds []WorkloadKind) bool {
+func hasValidReplicasetOwner(wl k8sapi.Workload, enabledKinds []Kind) bool {
 	for _, ref := range wl.GetOwnerReferences() {
 		if ref.Controller != nil && *ref.Controller {
 			switch ref.Kind {
 			case "Deployment":
-				if slices.Contains(enabledWorkloadKinds, DeploymentWorkloadKind) {
+				if slices.Contains(enabledKinds, DeploymentKind) {
 					return true
 				}
 
 			case "Rollout":
-				if slices.Contains(enabledWorkloadKinds, RolloutWorkloadKind) {
+				if slices.Contains(enabledKinds, RolloutKind) {
 					return true
 				}
 			}
@@ -125,23 +125,23 @@ func hasValidReplicasetOwner(wl k8sapi.Workload, enabledWorkloadKinds []Workload
 	return false
 }
 
-var trafficManagerSelector = labels.SelectorFromSet(map[string]string{ //nolint:gochecknoglobals // constant
+var TrafficManagerSelector = labels.SelectorFromSet(map[string]string{ //nolint:gochecknoglobals // constant
 	"app":          agentmap.ManagerAppName,
 	"telepresence": "manager",
 })
 
-func (w *watcher) Subscribe(ctx context.Context) <-chan []WorkloadEvent {
-	ch := make(chan []WorkloadEvent, 1)
-	initialEvents := make([]WorkloadEvent, 0, 100)
+func (w *watcher) Subscribe(ctx context.Context) <-chan []Event {
+	ch := make(chan []Event, 1)
+	initialEvents := make([]Event, 0, 100)
 	id := uuid.New()
 	kf := informer.GetFactory(ctx, w.namespace)
 	ai := kf.GetK8sInformerFactory().Apps().V1()
 	dlog.Debugf(ctx, "workload.Watcher producing initial events for namespace %s", w.namespace)
-	if slices.Contains(w.enabledWorkloadKinds, DeploymentWorkloadKind) {
+	if slices.Contains(w.enabledWorkloadKinds, DeploymentKind) {
 		if dps, err := ai.Deployments().Lister().Deployments(w.namespace).List(labels.Everything()); err == nil {
 			for _, obj := range dps {
-				if wl, ok := FromAny(obj); ok && !hasValidReplicasetOwner(wl, w.enabledWorkloadKinds) && !trafficManagerSelector.Matches(labels.Set(obj.Labels)) {
-					initialEvents = append(initialEvents, WorkloadEvent{
+				if wl, ok := FromAny(obj); ok && !hasValidReplicasetOwner(wl, w.enabledWorkloadKinds) && !TrafficManagerSelector.Matches(labels.Set(obj.Labels)) {
+					initialEvents = append(initialEvents, Event{
 						Type:     EventTypeAdd,
 						Workload: wl,
 					})
@@ -149,11 +149,11 @@ func (w *watcher) Subscribe(ctx context.Context) <-chan []WorkloadEvent {
 			}
 		}
 	}
-	if slices.Contains(w.enabledWorkloadKinds, ReplicaSetWorkloadKind) {
+	if slices.Contains(w.enabledWorkloadKinds, ReplicaSetKind) {
 		if rps, err := ai.ReplicaSets().Lister().ReplicaSets(w.namespace).List(labels.Everything()); err == nil {
 			for _, obj := range rps {
 				if wl, ok := FromAny(obj); ok && !hasValidReplicasetOwner(wl, w.enabledWorkloadKinds) {
-					initialEvents = append(initialEvents, WorkloadEvent{
+					initialEvents = append(initialEvents, Event{
 						Type:     EventTypeAdd,
 						Workload: wl,
 					})
@@ -161,11 +161,11 @@ func (w *watcher) Subscribe(ctx context.Context) <-chan []WorkloadEvent {
 			}
 		}
 	}
-	if slices.Contains(w.enabledWorkloadKinds, StatefulSetWorkloadKind) {
+	if slices.Contains(w.enabledWorkloadKinds, StatefulSetKind) {
 		if sps, err := ai.StatefulSets().Lister().StatefulSets(w.namespace).List(labels.Everything()); err == nil {
 			for _, obj := range sps {
 				if wl, ok := FromAny(obj); ok && !hasValidReplicasetOwner(wl, w.enabledWorkloadKinds) {
-					initialEvents = append(initialEvents, WorkloadEvent{
+					initialEvents = append(initialEvents, Event{
 						Type:     EventTypeAdd,
 						Workload: wl,
 					})
@@ -173,12 +173,12 @@ func (w *watcher) Subscribe(ctx context.Context) <-chan []WorkloadEvent {
 			}
 		}
 	}
-	if slices.Contains(w.enabledWorkloadKinds, RolloutWorkloadKind) {
+	if slices.Contains(w.enabledWorkloadKinds, RolloutKind) {
 		ri := kf.GetArgoRolloutsInformerFactory().Argoproj().V1alpha1()
 		if sps, err := ri.Rollouts().Lister().Rollouts(w.namespace).List(labels.Everything()); err == nil {
 			for _, obj := range sps {
 				if wl, ok := FromAny(obj); ok && !hasValidReplicasetOwner(wl, w.enabledWorkloadKinds) {
-					initialEvents = append(initialEvents, WorkloadEvent{
+					initialEvents = append(initialEvents, Event{
 						Type:     EventTypeAdd,
 						Workload: wl,
 					})
@@ -229,17 +229,17 @@ func (w *watcher) watch(ix cache.SharedIndexInformer, ns string, hasValidControl
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj any) {
 				if wl, ok := FromAny(obj); ok && ns == wl.GetNamespace() && !hasValidController(wl) {
-					w.handleEvent(WorkloadEvent{Type: EventTypeAdd, Workload: wl})
+					w.handleEvent(Event{Type: EventTypeAdd, Workload: wl})
 				}
 			},
 			DeleteFunc: func(obj any) {
 				if wl, ok := FromAny(obj); ok {
 					if ns == wl.GetNamespace() && !hasValidController(wl) {
-						w.handleEvent(WorkloadEvent{Type: EventTypeDelete, Workload: wl})
+						w.handleEvent(Event{Type: EventTypeDelete, Workload: wl})
 					}
 				} else if dfsu, ok := obj.(*cache.DeletedFinalStateUnknown); ok {
 					if wl, ok = FromAny(dfsu.Obj); ok && ns == wl.GetNamespace() && !hasValidController(wl) {
-						w.handleEvent(WorkloadEvent{Type: EventTypeDelete, Workload: wl})
+						w.handleEvent(Event{Type: EventTypeDelete, Workload: wl})
 					}
 				}
 			},
@@ -256,7 +256,7 @@ func (w *watcher) watch(ix cache.SharedIndexInformer, ns string, hasValidControl
 						//   return
 						// }
 						// dlog.Debugf(ctx, "DIFF:\n%s", diff)
-						w.handleEvent(WorkloadEvent{Type: EventTypeUpdate, Workload: wl})
+						w.handleEvent(Event{Type: EventTypeUpdate, Workload: wl})
 					}
 				}
 			},
@@ -274,13 +274,13 @@ func (w *watcher) addEventHandler(ctx context.Context, ns string) error {
 	for _, wlKind := range w.enabledWorkloadKinds {
 		var ssi cache.SharedIndexInformer
 		switch wlKind {
-		case DeploymentWorkloadKind:
+		case DeploymentKind:
 			ssi = ai.Deployments().Informer()
-		case ReplicaSetWorkloadKind:
+		case ReplicaSetKind:
 			ssi = ai.ReplicaSets().Informer()
-		case StatefulSetWorkloadKind:
+		case StatefulSetKind:
 			ssi = ai.StatefulSets().Informer()
-		case RolloutWorkloadKind:
+		case RolloutKind:
 			ri := kf.GetArgoRolloutsInformerFactory().Argoproj().V1alpha1()
 			ssi = ri.Rollouts().Informer()
 		default:
@@ -294,9 +294,9 @@ func (w *watcher) addEventHandler(ctx context.Context, ns string) error {
 	return nil
 }
 
-func (w *watcher) handleEvent(we WorkloadEvent) {
+func (w *watcher) handleEvent(we Event) {
 	// Always exclude the traffic-manager
-	if we.Workload.GetKind() == "Deployment" && trafficManagerSelector.Matches(labels.Set(we.Workload.GetLabels())) {
+	if we.Workload.GetKind() == "Deployment" && TrafficManagerSelector.Matches(labels.Set(we.Workload.GetLabels())) {
 		return
 	}
 	w.Lock()

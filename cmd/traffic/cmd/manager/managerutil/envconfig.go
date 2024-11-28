@@ -72,7 +72,7 @@ type Env struct {
 	ClientDnsIncludeSuffixes             []string       `env:"CLIENT_DNS_INCLUDE_SUFFIXES,       		parser=split-trim,  default="`
 	ClientConnectionTTL                  time.Duration  `env:"CLIENT_CONNECTION_TTL,              		parser=time.ParseDuration"`
 
-	EnabledWorkloadKinds []workload.WorkloadKind `env:"ENABLED_WORKLOAD_KINDS, parser=split-trim, default=Deployment StatefulSet ReplicaSet"`
+	EnabledWorkloadKinds []workload.Kind `env:"ENABLED_WORKLOAD_KINDS, parser=split-trim, default=Deployment StatefulSet ReplicaSet"`
 
 	// For testing only
 	CompatibilityVersion *semver.Version `env:"COMPATIBILITY_VERSION, parser=version, default="`
@@ -258,16 +258,16 @@ func fieldTypeHandlers() map[reflect.Type]envconfig.FieldTypeHandler {
 		},
 		Setter: func(dst reflect.Value, src any) { dst.Set(reflect.ValueOf(src.(*semver.Version))) },
 	}
-	fhs[reflect.TypeOf([]workload.WorkloadKind{})] = envconfig.FieldTypeHandler{
+	fhs[reflect.TypeOf([]workload.Kind{})] = envconfig.FieldTypeHandler{
 		Parsers: map[string]func(string) (any, error){
 			"split-trim": func(str string) (any, error) { //nolint:unparam // API requirement
 				if len(str) == 0 {
 					return nil, nil
 				}
 				ss := strings.Split(str, " ")
-				ks := make([]workload.WorkloadKind, len(ss))
+				ks := make([]workload.Kind, len(ss))
 				for i, s := range ss {
-					ks[i] = workload.WorkloadKind(s)
+					ks[i] = workload.Kind(s)
 					if !ks[i].IsValid() {
 						return nil, fmt.Errorf("invalid workload kind: %q", s)
 					}
@@ -275,7 +275,7 @@ func fieldTypeHandlers() map[reflect.Type]envconfig.FieldTypeHandler {
 				return ks, nil
 			},
 		},
-		Setter: func(dst reflect.Value, src interface{}) { dst.Set(reflect.ValueOf(src.([]workload.WorkloadKind))) },
+		Setter: func(dst reflect.Value, src interface{}) { dst.Set(reflect.ValueOf(src.([]workload.Kind))) },
 	}
 	return fhs
 }

@@ -842,13 +842,13 @@ func (c *configWatcher) Start(ctx context.Context) {
 	c.cms = make([]cache.SharedIndexInformer, len(nss))
 	for _, wlKind := range env.EnabledWorkloadKinds {
 		switch wlKind {
-		case workload.DeploymentWorkloadKind:
+		case workload.DeploymentKind:
 			c.dps = make([]cache.SharedIndexInformer, len(nss))
-		case workload.ReplicaSetWorkloadKind:
+		case workload.ReplicaSetKind:
 			c.rss = make([]cache.SharedIndexInformer, len(nss))
-		case workload.StatefulSetWorkloadKind:
+		case workload.StatefulSetKind:
 			c.sss = make([]cache.SharedIndexInformer, len(nss))
-		case workload.RolloutWorkloadKind:
+		case workload.RolloutKind:
 			c.rls = make([]cache.SharedIndexInformer, len(nss))
 		}
 	}
