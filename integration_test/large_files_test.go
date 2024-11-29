@@ -170,7 +170,7 @@ func (s *largeFilesSuite) largeFileIntercepts(ctx context.Context) {
 	wg := sync.WaitGroup{}
 
 	// Start by creating files in the mounted filesystem from entry 1 - fileCountPerSvc for each service.
-	// We leave the first entry empty because we in the next step, we want to create a file parallel to
+	// We leave the first entry empty because in the next step, we want to create a file parallel to
 	// validating the ones we create here so that there is heavy parallel reads and writes.
 	wg.Add(s.ServiceCount() * (fileCountPerSvc - 1))
 	for i := 0; i < s.ServiceCount(); i++ {

@@ -111,7 +111,7 @@ func (s *Runner) Run(ctx context.Context, waitMessage string, args ...string) er
 		_, _ = io.Copy(dos.Stderr(ctx), errRdr)
 	}()
 
-	if err := w.wait(procCtx); err != nil {
+	if err = w.wait(procCtx); err != nil {
 		return spin.Error(err)
 	}
 	spin.Done()

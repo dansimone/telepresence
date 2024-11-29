@@ -109,11 +109,14 @@ func (s *ingestSuite) TearDownSuite() {
 
 func (s *ingestSuite) mountPoint() string {
 	switch runtime.GOOS {
-	case "darwin":
-		// Run without mounting on darwin. Apple prevents proper install of kernel extensions
-		return "false"
 	case "windows":
 		return "T:"
+	case "darwin":
+		if s.IsCI() {
+			// Run without mounting on darwin. Apple prevents proper install of kernel extensions
+			return "false"
+		}
+		fallthrough
 	default:
 		mountPoint, err := os.MkdirTemp("", "mount-") // Don't use the testing.Tempdir() because deletion is delayed.
 		s.Require().NoError(err)

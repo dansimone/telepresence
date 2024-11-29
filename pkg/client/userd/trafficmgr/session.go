@@ -422,6 +422,9 @@ func connectMgr(
 			Version:   client.Version(),
 		})
 		if err != nil {
+			if st, ok := status.FromError(err); ok && st.Code() == codes.FailedPrecondition {
+				return nil, errcat.User.New(st.Message())
+			}
 			return nil, client.CheckTimeout(ctx, fmt.Errorf("manager.ArriveAsClient: %w", err))
 		}
 		if err = SaveSessionInfoToUserCache(ctx, daemonID, si); err != nil {
@@ -1212,6 +1215,9 @@ func (s *session) workloadsWatcher(ctx context.Context, namespace string, synced
 	}()
 	wlc, err := s.managerClient.WatchWorkloads(ctx, &manager.WorkloadEventsRequest{SessionInfo: s.sessionInfo, Namespace: namespace})
 	if err != nil {
+		if st, ok := status.FromError(err); ok && st.Code() == codes.FailedPrecondition {
+			return errcat.User.New(st.Message())
+		}
 		return err
 	}
 

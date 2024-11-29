@@ -202,6 +202,10 @@ func (s *service) GetTelepresenceAPI(ctx context.Context, e *empty.Empty) (*rpc.
 func (s *service) ArriveAsClient(ctx context.Context, client *rpc.ClientInfo) (*rpc.SessionInfo, error) {
 	dlog.Debugf(ctx, "ArriveAsClient called, namespace: %s", client.Namespace)
 
+	if !s.State().ManagesNamespace(ctx, client.Namespace) {
+		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("namespace %s not managed", client.Namespace))
+	}
+
 	if val := validateClient(client); val != "" {
 		return nil, status.Error(codes.InvalidArgument, val)
 	}
@@ -978,6 +982,8 @@ func (s *service) WatchWorkloads(request *rpc.WorkloadEventsRequest, stream rpc.
 			return status.Errorf(codes.NotFound, "Client session %q not found", clientSession)
 		}
 		namespace = clientInfo.Namespace
+	} else if !s.State().ManagesNamespace(ctx, namespace) {
+		return status.Error(codes.FailedPrecondition, fmt.Sprintf("namespace %s not managed", namespace))
 	}
 	ww := s.state.NewWorkloadInfoWatcher(clientSession, namespace)
 	return ww.Watch(ctx, stream)

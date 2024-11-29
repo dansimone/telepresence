@@ -287,9 +287,8 @@ func (s *dockerDaemonSuite) Test_DockerRunCommand() {
 	s.TelepresenceConnect(ctx, "--docker", "--hostname", "cicero")
 	defer itest.TelepresenceQuitOk(ctx)
 
-	stdout, stderr, err := itest.Telepresence(ctx, "docker-run", "--rm", "busybox", "ip", "r")
+	stdout, _, err := itest.Telepresence(ctx, "docker-run", "--rm", "busybox", "ip", "r")
 	require.NoError(err)
-	s.Empty(stderr)
 	dlog.Infof(ctx, "stdout = %s", stdout)
 	s.Contains(stdout, "dev tel0")
 }

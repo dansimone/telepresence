@@ -219,6 +219,9 @@ func (wf *workloadInfoWatcher) handleWorkloadsSnapshot(ctx context.Context, wes 
 	}
 	for _, we := range wes {
 		wl := we.Workload
+		if wf.namespace != "" && wl.GetNamespace() != wf.namespace {
+			continue
+		}
 		if w, ok := wf.workloadEvents[wl.GetName()]; ok {
 			if we.Type == workload.EventTypeDelete && w.Type != rpc.WorkloadEvent_DELETED {
 				w.Type = rpc.WorkloadEvent_DELETED

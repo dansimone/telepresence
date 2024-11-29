@@ -28,6 +28,7 @@ import (
 	"github.com/telepresenceio/telepresence/v2/cmd/traffic/cmd/manager/watchable"
 	"github.com/telepresenceio/telepresence/v2/pkg/agentconfig"
 	"github.com/telepresenceio/telepresence/v2/pkg/dnsproxy"
+	"github.com/telepresenceio/telepresence/v2/pkg/informer"
 	"github.com/telepresenceio/telepresence/v2/pkg/iputil"
 	"github.com/telepresenceio/telepresence/v2/pkg/log"
 	"github.com/telepresenceio/telepresence/v2/pkg/tracing"
@@ -96,6 +97,7 @@ type State interface {
 	WatchLookupDNS(string) <-chan *rpc.DNSRequest
 	ValidateCreateAgent(context.Context, k8sapi.Workload, agentconfig.SidecarExt) error
 	NewWorkloadInfoWatcher(clientSession, namespace string) WorkloadInfoWatcher
+	ManagesNamespace(context.Context, string) bool
 }
 
 type (
@@ -148,6 +150,10 @@ type state struct {
 
 	// Possibly extended version of the state. Use when calling interface methods.
 	self State
+}
+
+func (s *state) ManagesNamespace(ctx context.Context, ns string) bool {
+	return informer.GetK8sFactory(ctx, ns) != nil
 }
 
 var NewStateFunc = NewState //nolint:gochecknoglobals // extension point

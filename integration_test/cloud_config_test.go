@@ -271,7 +271,7 @@ func (s *notConnectedSuite) Test_UserdCloudLogLevel() {
 
 	var currentLine int64
 	s.Eventually(func() bool {
-		_, _, err := itest.Telepresence(ctx, "connect", "--manager-namespace", s.ManagerNamespace())
+		_, _, err := itest.Telepresence(ctx, "connect", "--manager-namespace", s.ManagerNamespace(), "--namespace", s.AppNamespace())
 		if err != nil {
 			return false
 		}

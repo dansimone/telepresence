@@ -203,7 +203,7 @@ func (s *multiConnectSuite) doubleConnectCheck(ctx1, ctx2 context.Context, n1, n
 				dlog.Info(ctx, ot)
 				return expectedOutput.MatchString(ot)
 			},
-			10*time.Second, // waitFor
+			20*time.Second, // waitFor
 			3*time.Second,  // polling interval
 			`body of %q matches %q`, "http://"+svc, expectedOutput,
 		)

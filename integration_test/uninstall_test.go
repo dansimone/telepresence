@@ -50,6 +50,13 @@ func (s *notConnectedSuite) Test_Uninstall() {
 			return false
 		}
 		match, err := regexp.MatchString(jobname+`-[a-z0-9]+-[a-z0-9]+\s+1/1\s+Running`, stdout)
+		if err != nil {
+			dlog.Error(ctx, err)
+			return false
+		}
+		if !match {
+			dlog.Infof(ctx, "stdout = %s", stdout)
+		}
 		return err == nil && match
 	}, itest.PodCreateTimeout(ctx), 2*time.Second)
 
