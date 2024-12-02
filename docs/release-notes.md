@@ -9,10 +9,29 @@
 This update introduces a `--container <name>` option to the intercept command. While this option doesn't influence the port selection, it guarantees that the environment variables and mounts propagated to the client originate from the specified container. Additionally, if the `--replace` option is used, it ensures that this container is replaced.
 </div>
 
-## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">Added ingest command</div></div>
+## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">New telepresence ingest command</div></div>
 <div style="margin-left: 15px">
 
-The new `telepresence ingest` command is similar to `telepresence intercept` in that it will make volume mounts and environment of the targeted container available locally, but it will ensure that the locally mounted volumes are read-only and not redirect any traffic that is routed to that container. Multiple simultaneous ingests are possible, because they will never conflict.
+The new `telepresence ingest` command, similar to `telepresence intercept`, provides local access to the volume mounts and environment variables of a targeted container. However, unlike `telepresence intercept`, `telepresence ingest` does not redirect traffic to the container and ensures that the mounted volumes are read-only.
+An ingest requires a traffic-agent to be installed in the pods of the targeted workload. Beyond that, it's a client-side operation. This allows developers to have multiple simultaneous ingests on the same container.
+</div>
+
+## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">New telepresence curl command</div></div>
+<div style="margin-left: 15px">
+
+The new `telepresence curl` command runs curl from within a container. The command requires that a connection has been established using `telepresence connect --docker`, and the container that runs `curl` will share the same network as the containerized telepresence daemon.
+</div>
+
+## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">New telepresence docker-run command</div></div>
+<div style="margin-left: 15px">
+
+The new `telepresence docker-run <flags and arguments>` requires that a connection has been established using `telepresence connect --docker` It will perform a `docker run <flags and arguments>` and add the flag necessary to ensure that started container shares the same network as the containerized telepresence daemon.
+</div>
+
+## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">Mount everything read-only during intercept</div></div>
+<div style="margin-left: 15px">
+
+It is now possible to append ":ro" to the intercept `--mount` flag value. This ensures that all remote volumes that the intercept mounts are read-only.
 </div>
 
 ## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">[Unify client configuration](https://telepresence.io/docs/reference/config)</div></div>
@@ -39,7 +58,34 @@ The OSS code-base will no longer report usage data to the proprietary collector 
 ## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">Add deployments, statefulSets, replicaSets to workloads Helm chart value</div></div>
 <div style="margin-left: 15px">
 
-The Helm chart value <code>workloads</code> now supports the kinds <code>deployments.enabled</code>, <code>statefulSets.enabled</code>, and <code>replicaSets.enabled</code>. By default, all three are enabled, but can be disabled by setting the corresponding value to <code>false</code>. When disabled, the traffic-manager will ignore workloads of a corresponding kind, and Telepresence will not be able to intercept them.
+The Helm chart value `workloads` now supports the kinds `deployments.enabled`, `statefulSets.enabled`, `replicaSets.enabled`. and `rollouts.enabled`. All except `rollouts` are enabled by default. The traffic-manager will ignore workloads, and Telepresence will not be able to intercept them, if the `enabled` of the corresponding kind is set to `false`.
+</div>
+
+## <div style="display:flex;"><img src="images/feature.png" alt="feature" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">Improved command auto-completion</div></div>
+<div style="margin-left: 15px">
+
+The auto-completion of namespaces, services, and containers have been added where appropriate, and the default file auto completion has been removed from most commands.
+</div>
+
+## <div style="display:flex;"><img src="images/.png" alt="" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">Docker run flags --publish, --expose, and --network now work with docker mode connections</div></div>
+<div style="margin-left: 15px">
+
+After establishing a connection to a cluster using `telepresence connect --docker`, you can run new containers that share the same network as the containerized daemon that maintains the connection. This enables seamless communication between your local development environment and the remote services.
+Normally, Docker has a limitation that prevents combining a shared network configuration with custom networks and exposing ports. However, Telepresence now elegantly circumvents this limitation so that a container started with `telepresence docker-run`, `telepresence intercept --docker-run`, or `telepresence ingest --docker-run` can use flags like `--network`, `--publish`, or `--expose`.
+To achieve this, Telepresence temporarily adds the necessary network to the containerized daemon. This allows the new container to join the same network. Additionally, Telepresence starts extra socat containers to handle port mapping, ensuring that the desired ports are exposed to the local environment.
+</div>
+
+## <div style="display:flex;"><img src="images/change.png" alt="change" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">During an intercept, the local port defaults to the targeted port of the intercepted container instead of 8080.</div></div>
+<div style="margin-left: 15px">
+
+Telepresence mimics the environment of a target container during an intercept, so it's only natural that the default for the local port is determined by the targeted container port rather than just defaulting to 8080.
+A default can still be explicitly defined using the `config.intercept.defaultPort` setting.
+</div>
+
+## <div style="display:flex;"><img src="images/bugfix.png" alt="bugfix" style="width:30px;height:fit-content;"/><div style="display:flex;margin-left:7px;">Prevent that traffic-manager injects a traffic-agent into itself.</div></div>
+<div style="margin-left: 15px">
+
+The traffic-manager can never be a subject for an intercept, ingest, or proxy-via, because that means that it injects the traffic-agent into itself, and it is not designed to do that. A user attempting this will now see a meaningful error message.
 </div>
 
 ## Version 2.20.3 <span style="font-size: 16px;">(November 18)</span>

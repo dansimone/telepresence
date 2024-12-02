@@ -16,10 +16,10 @@ raw markdown version, more bells and whistles at [telepresence.io](https://telep
   - [Using Telepresence with Docker](concepts/docker.md)
   - [Intercepts](concepts/intercepts.md)
 - How do I...
-  - [Intercept a service in your own environment](howtos/intercepts.md)
+  - [Code and debug an application locally](howtos/intercepts.md)
   - [Proxy outbound traffic to my cluster](howtos/outbound.md)
   - [Work with large clusters](howtos/large-clusters.md)
-  - [Host a cluster in a local VM](howtos/cluster-in-vm.md)
+  - [Host a cluster in Docker or a VM](howtos/cluster-in-vm.md)
 - Technical reference
   - [Architecture](reference/architecture.md)
   - [Client reference](reference/client.md)
