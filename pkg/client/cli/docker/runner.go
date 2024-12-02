@@ -279,7 +279,8 @@ func (w *waiter) wait(ctx context.Context) error {
 func EnsureStopContainer(ctx context.Context, containerID string, volumes []string, exited, signalled *atomic.Bool) {
 	if len(volumes) > 0 {
 		defer func() {
-			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			time.Sleep(200 * time.Millisecond)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			docker.StopVolumeMounts(ctx, volumes)
 		}()
@@ -295,6 +296,7 @@ func EnsureStopContainer(ctx context.Context, containerID string, volumes []stri
 	}
 	signalled.Store(true)
 	if exited.Load() {
+		dlog.Debugf(ctx, "No need to stop container %s. It already exited", containerID)
 		return
 	}
 	ctx = context.WithoutCancel(ctx)

@@ -572,6 +572,7 @@ func tryLaunch(ctx context.Context, daemonID *daemon.Identifier, port int, args 
 	}
 	cid := strings.TrimSpace(stdOut.String())
 	cr := daemon.GetRequest(ctx)
+	dlog.Debugf(ctx, "Creating daemon info file %s (runs in container)", daemonID.Name)
 	return cid, daemon.SaveInfo(ctx,
 		&daemon.Info{
 			Options:      map[string]string{"cid": cid},
