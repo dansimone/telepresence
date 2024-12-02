@@ -3,6 +3,7 @@ package intercept
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"os"
 	"runtime"
 	"strings"
@@ -284,7 +285,11 @@ func (s *state) runCommand(ctx context.Context) error {
 		Mount:         s.info.Mount,
 	}
 	if s.dockerPort != 0 {
-		dr.Ports = []string{fmt.Sprintf("%d:%d", s.localPort, s.dockerPort)}
+		dr.Flags.PublishedPorts = append(dr.Flags.PublishedPorts, cliDocker.PublishedPort{
+			HostAddrPort:  netip.AddrPortFrom(netip.IPv4Unspecified(), s.localPort),
+			Protocol:      "tcp",
+			ContainerPort: s.dockerPort,
+		})
 	}
 	return dr.Run(ctx, s.WaitMessage, s.Cmdline...)
 }

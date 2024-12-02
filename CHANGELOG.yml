@@ -116,6 +116,21 @@ items:
         body: >-
           The auto-completion of namespaces, services, and containers have been added where appropriate, and the default
           file auto completion has been removed from most commands.
+      - feature:
+        title: Docker run flags --publish, --expose, and --network now work with docker mode connections
+        body: >-
+          After establishing a connection to a cluster using `telepresence connect --docker`, you can run new containers that share
+          the same network as the containerized daemon that maintains the connection. This enables seamless communication between
+          your local development environment and the remote services.
+          
+          Normally, Docker has a limitation that prevents combining a shared network configuration with custom networks
+          and exposing ports. However, Telepresence now elegantly circumvents this limitation so that a container started with
+          `telepresence docker-run`, `telepresence intercept --docker-run`, or `telepresence ingest --docker-run` can use flags
+          like `--network`, `--publish`, or `--expose`.
+
+          To achieve this, Telepresence temporarily adds the necessary network to the containerized daemon. This allows the new
+          container to join the same network. Additionally, Telepresence starts extra socat containers to handle port mapping,
+          ensuring that the desired ports are exposed to the local environment.
       - type: change
         title: During an intercept, the local port defaults to the targeted port of the intercepted container instead of 8080.
         body: >-

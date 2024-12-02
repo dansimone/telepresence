@@ -37,8 +37,6 @@ linters-settings:
         deny:
           - pkg: io/ioutil
             desc: "`io/ioutil` is deprecated in Go 1.16, use `io` or `os` instead"
-          - pkg: os/exec
-            desc: "Use `github.com/datawire/dlib/dexec` instead of `os/exec`"
           - pkg: syscall
             desc: "Use `golang.org/x/sys/...` instead of `syscall`"
           - pkg: github.com/golang/protobuf

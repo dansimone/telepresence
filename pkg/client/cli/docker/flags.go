@@ -14,16 +14,17 @@ import (
 )
 
 type Flags struct {
-	Run          bool     // --docker-run
-	Debug        bool     // set if --docker-debug was used
-	BuildOptions []string // --docker-build-opt key=value, // Optional flag to docker build can be repeated (but not comma separated)
-	Context      string   // Set to build or debug by Validate function
-	Image        string
-	Mount        string // --docker-mount // where to mount in a docker container. Defaults to mount unless mount is "true" or "false".
-	build        string // --docker-build DIR | URL
-	debug        string // --docker-debug DIR | URL
-	args         []string
-	imageIndex   int
+	Run            bool           // --docker-run
+	Debug          bool           // set if --docker-debug was used
+	BuildOptions   []string       // --docker-build-opt key=value, // Optional flag to docker build can be repeated (but not comma separated)
+	PublishedPorts PublishedPorts // --publish Port mappings that the container will expose on localhost
+	Context        string         // Set to build or debug by Validate function
+	Image          string
+	Mount          string // --docker-mount // where to mount in a docker container. Defaults to mount unless mount is "true" or "false".
+	build          string // --docker-build DIR | URL
+	debug          string // --docker-debug DIR | URL
+	args           []string
+	imageIndex     int
 }
 
 func (f *Flags) AddFlags(flagSet *pflag.FlagSet, what string) {
@@ -39,10 +40,14 @@ func (f *Flags) AddFlags(flagSet *pflag.FlagSet, what string) {
 		`Like --docker-build, but allows a debugger to run inside the container with relaxed security`)
 
 	flagSet.StringArrayVar(&f.BuildOptions, "docker-build-opt", nil,
-		`Option to docker-build in the form key=value, e.g. --docker-build-opt tag=mytag. Can be repeated`)
+		`Options to docker-build in the form key=value, e.g. --docker-build-opt tag=mytag.`)
 
 	flagSet.StringVar(&f.Mount, "docker-mount", "", ``+
 		`The volume mount point in docker. Defaults to same as "--mount"`)
+
+	flagSet.Var(&f.PublishedPorts,
+		"publish", ``+
+			`Ports that the container will publish. See docker run --publish for more info.`)
 }
 
 func (f *Flags) Validate(args []string) error {
@@ -59,21 +64,23 @@ func (f *Flags) Validate(args []string) error {
 		f.Context = f.debug
 		f.Debug = true
 	}
+	alts := "--docker-run, --docker-build, or --docker-debug"
 	if drCount > 1 {
-		return errcat.User.New("only one of --docker-run, --docker-build, or --docker-debug can be used")
+		return errcat.User.Newf("only one of %s can be used", alts)
 	}
 	f.Run = drCount == 1
 	if !f.Run {
 		if f.Mount != "" {
-			return errcat.User.New("--docker-mount must be used together with --docker-run, --docker-build, or --docker-debug")
+			return errcat.User.Newf("--docker-mount must be used together with %s", alts)
+		}
+		if len(f.PublishedPorts) > 0 {
+			return errcat.User.Newf("--publish must be used together with %s", alts)
 		}
 		return nil
 	}
 
-	for _, arg := range args {
-		if arg == "-d" || arg == "--detach" {
-			return errcat.User.New("running docker container in background using -d or --detach is not supported")
-		}
+	if flags.HasOption("detach", 'd', args) {
+		return errcat.User.New("running docker container in background using -d or --detach is not supported")
 	}
 	f.Image, f.imageIndex = firstArg(args)
 	f.args = args
@@ -114,6 +121,7 @@ func (f *Flags) PullOrBuildImage(ctx context.Context) error {
 	spin.DoneMsg("image built successfully")
 	if f.imageIndex < 0 {
 		f.args = []string{imageID}
+		f.imageIndex = 0
 	} else {
 		f.args[f.imageIndex] = imageID
 	}
@@ -121,16 +129,16 @@ func (f *Flags) PullOrBuildImage(ctx context.Context) error {
 }
 
 func (f *Flags) GetContainerNameAndArgs(defaultContainerName string) (string, []string, error) {
-	args := f.args
-	name, err := flags.GetUnparsedValue(args, "--name")
+	name, found, err := flags.GetUnparsedValue("name", 0, false, f.args)
 	if err != nil {
-		return "", args, err
+		return "", nil, err
 	}
-	if name == "" {
+	if !found {
 		name = defaultContainerName
-		args = append([]string{"--name", name}, args...)
+		f.args = append([]string{"--name", name}, f.args...)
+		f.imageIndex += 2
 	}
-	return name, args, nil
+	return name, f.args, nil
 }
 
 var boolFlags = map[string]bool{ //nolint:gochecknoglobals // this is a constant

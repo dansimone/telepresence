@@ -20,15 +20,32 @@ The `--docker` flag is a global flag, and if passed directly like `telepresence 
 
 ### The docker-run flag
 
-If you want your intercept to go to another Docker container, you can use the `--docker-run` flag. It creates the intercept, runs your container in the foreground, then automatically ends the intercept when the container exits.
+If you want your intercept to use another Docker container, you can use the `--docker-run` flag. It creates the ingest or intercept, runs your container in the foreground, then automatically ends the intercept when the container exits.
+
+After establishing a connection to a cluster using `telepresence connect --docker`, the container started when using `--docker-run` will share
+the same network as the containerized daemon that maintains the connection. This enables seamless communication between your local development
+environment and the remote cluster.
+
+Normally, Docker has a limitation that prevents combining a shared network configuration with custom networks and exposing ports. However,
+Telepresence elegantly circumvents this limitation so that you can use `docker run` flags like `--network`, `--publish`, or `--expose`.
+
+To achieve this, Telepresence temporarily adds the necessary network to the containerized daemon. This allows the new container to join the
+same network. Additionally, Telepresence starts extra socat containers to handle port mappings, ensuring that the desired ports are exposed
+to the local environment.
 
 ```console
-$ telepresence intercept <service_name> --port <port> --docker-run -- <docker run arguments> <image> <container arguments>
+$ telepresence intercept <workload_name> --port <port> --docker-run -- <docker run flags> <image> <container arguments>
+```
+OR
+```console
+$ telepresence ingest <workload_name> --container <container_name> --docker-run -- <docker run flags> <image> <container arguments>
 ```
 
-The `--` separates flags intended for `telepresence intercept` from flags intended for `docker run`.
+The `--` separates flags intended for `telepresence ingest/intercept` from flags intended for `docker run`.
 
-It's recommended that you always use the `--docker-run` in combination with the global `--docker` flag, because that makes everything less intrusive.
+It's recommended that you always use the `--docker-run` in combination with a connection started with the `telepresence connect --docker`,
+because that makes everything less intrusive:
+
 - No admin user access is needed. Network modifications are confined to a Docker network.
 - There's no need for special filesystem mount software like MacFUSE or WinFSP. The volume mounts happen in the Docker engine.
 
@@ -36,9 +53,9 @@ The following happens under the hood when both flags are in use:
 
 - The network of for the intercept handler will be set to the same as the network used by the daemon. This guarantees that the
   intercept handler can access the Telepresence VIF, and hence have access the cluster.
-- Volume mounts will be automatic and made using the Telemount Docker volume plugin so that all volumes exposed by the intercepted
-  container are mounted on the intercept handler container.
-- The environment of the intercepted container becomes the environment of the intercept handler container.
+- Volume mounts will be automatic and made using the Telemount Docker volume plugin so that all volumes exposed by the targeted
+  remote container are mounted on the local handler container.
+- The environment of the remote container becomes the environment of the local handler container.
 
 ### The docker-build flag
 
@@ -84,6 +101,7 @@ Telepresence will automatically pass some relevant flags to Docker in order to c
 When used with a container based daemon:
 - `--rm` Mandatory, because the volume mounts cannot be removed until the container is removed.
 - `-v <telemount volume>:<docker mount dir>` Volume mount specifications propagated from the intercepted container
+- `--network container:<name of containerized daemon>` Network is shared with the containerized daemon
 
 When used with a daemon that isn't container based:
 - `--dns-search tel2-search` Enables single label name lookups in intercepted namespaces

@@ -126,7 +126,7 @@ func (s *state) create(ctx context.Context) (acquired bool, err error) {
 	ii, err := ud.Ingest(ctx, ir)
 	if err != nil {
 		switch grpcStatus.Code(err) {
-		case grpcCodes.AlreadyExists, grpcCodes.NotFound, grpcCodes.Unimplemented:
+		case grpcCodes.AlreadyExists, grpcCodes.NotFound, grpcCodes.Unimplemented, grpcCodes.FailedPrecondition:
 			return false, errcat.User.New(grpcStatus.Convert(err).Message())
 		}
 		return false, fmt.Errorf("ingest: %w", err)
@@ -205,6 +205,7 @@ func (s *state) runCommand(ctx context.Context) error {
 	}
 
 	ii := NewInfo(ctx, s.info, s.mountError)
+	ii.Environment["TELEPRESENCE_INTERCEPT_ID"] = s.WorkloadName + "/" + s.ContainerName
 	dr := cliDocker.Runner{
 		Flags:         s.DockerFlags,
 		ContainerName: s.handlerContainer,
