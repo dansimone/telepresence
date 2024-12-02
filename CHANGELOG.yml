@@ -123,6 +123,12 @@ items:
           for the local port is determined by the targeted container port rather than just defaulting to 8080.
           
           A default can still be explicitly defined using the `config.intercept.defaultPort` setting.
+      - type: bugfix
+        title: Prevent that traffic-manager injects a traffic-agent into itself.
+        body: >-
+          The traffic-manager can never be a subject for an intercept, ingest, or proxy-via, because that means that
+          it injects the traffic-agent into itself, and it is not designed to do that. A user attempting this will
+          now see a meaningful error message.
   - version: 2.20.3
     date: 2024-11-18
     notes:

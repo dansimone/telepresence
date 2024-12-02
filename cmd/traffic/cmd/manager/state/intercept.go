@@ -21,6 +21,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/datawire/dlib/derror"
 	"github.com/datawire/dlib/dlog"
@@ -100,15 +101,16 @@ func (s *state) PrepareIntercept(
 	}, nil
 }
 
-func (s *state) EnsureAgent(ctx context.Context, n, ns string) ([]*managerrpc.AgentInfo, error) {
-	wl, err := agentmap.GetWorkload(ctx, n, ns, "")
+func (s *state) EnsureAgent(ctx context.Context, n, ns string) (as []*managerrpc.AgentInfo, err error) {
+	var wl k8sapi.Workload
+	wl, err = agentmap.GetWorkload(ctx, n, ns, "")
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			err = errcat.User.New(err)
 		}
 		return nil, err
 	}
-	_, as, err := s.ensureAgent(ctx, wl, false, nil)
+	_, as, err = s.ensureAgent(ctx, wl, false, nil)
 	return as, err
 }
 
@@ -126,6 +128,12 @@ func sortAgents(as []*managerrpc.AgentInfo) {
 func (s *state) ensureAgent(parentCtx context.Context, wl k8sapi.Workload, extended bool, spec *managerrpc.InterceptSpec) (
 	ac *agentconfig.Sidecar, as []*managerrpc.AgentInfo, err error,
 ) {
+	if agentmap.TrafficManagerSelector.Matches(labels.Set(wl.GetLabels())) {
+		msg := fmt.Sprintf("deployment %s.%s is the Telepresence Traffic Manager. It can not have a traffic-agent", wl.GetName(), wl.GetNamespace())
+		dlog.Error(parentCtx, msg)
+		return nil, nil, status.Error(codes.FailedPrecondition, msg)
+	}
+
 	if !managerutil.AgentInjectorEnabled(parentCtx) {
 		sce, err := mutator.GetMap(parentCtx).Get(parentCtx, wl.GetName(), wl.GetNamespace())
 		if err != nil {
@@ -145,7 +153,8 @@ func (s *state) ensureAgent(parentCtx context.Context, wl k8sapi.Workload, exten
 			sortAgents(as)
 			return ac, as, nil
 		}
-		return nil, nil, errcat.User.Newf("agent-injector is disabled and no agent has been added manually for %s.%s", wl.GetName(), wl.GetNamespace())
+		msg := fmt.Sprintf("agent-injector is disabled and no agent has been added manually for %s.%s", wl.GetName(), wl.GetNamespace())
+		return nil, nil, status.Error(codes.FailedPrecondition, msg)
 	}
 	ctx, cancel := context.WithTimeout(parentCtx, managerutil.GetEnv(parentCtx).AgentArrivalTimeout)
 	defer cancel()

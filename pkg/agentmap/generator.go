@@ -8,6 +8,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/datawire/dlib/dlog"
@@ -24,6 +25,11 @@ const (
 	ServiceNameAnnotation = agentconfig.DomainPrefix + "inject-service-name"
 	ManagerAppName        = "traffic-manager"
 )
+
+var TrafficManagerSelector = labels.SelectorFromSet(map[string]string{ //nolint:gochecknoglobals // constant
+	"app":          ManagerAppName,
+	"telepresence": "manager",
+})
 
 type GeneratorConfig interface {
 	// Generate generates a configuration for the given workload. If replaceContainers is given it will be used to configure
@@ -76,6 +82,10 @@ func (cfg *BasicGeneratorConfig) Generate(
 ) (sc agentconfig.SidecarExt, err error) {
 	ctx, span := otel.GetTracerProvider().Tracer("").Start(ctx, "agentmap.Generate")
 	defer tracing.EndAndRecord(span, err)
+
+	if TrafficManagerSelector.Matches(labels.Set(wl.GetLabels())) {
+		return nil, fmt.Errorf("deployment %s.%s is the Telepresence Traffic Manager. It can not have a traffic-agent", wl.GetName(), wl.GetNamespace())
+	}
 
 	pod := wl.GetPodTemplate()
 	pod.Namespace = wl.GetNamespace()

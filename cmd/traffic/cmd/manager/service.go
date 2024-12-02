@@ -590,12 +590,12 @@ func (s *service) EnsureAgent(ctx context.Context, request *rpc.EnsureAgentReque
 	}
 	as, err := s.state.EnsureAgent(ctx, request.Name, client.Namespace)
 	if err != nil {
-		err = status.Errorf(codes.Internal, "failed to ensure agent for workload %s: %v", request.Name, err)
+		return nil, status.Convert(err).Err()
 	}
 	if len(as) == 0 {
-		err = status.Errorf(codes.Internal, "failed to ensure agent for workload %s: no agents became active", request.Name)
+		return nil, status.Errorf(codes.Internal, "failed to ensure agent for workload %s: no agents became active", request.Name)
 	}
-	return &rpc.AgentInfoSnapshot{Agents: as}, err
+	return &rpc.AgentInfoSnapshot{Agents: as}, nil
 }
 
 // CreateIntercept lets a client create an intercept.

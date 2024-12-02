@@ -125,11 +125,6 @@ func hasValidReplicasetOwner(wl k8sapi.Workload, enabledKinds []Kind) bool {
 	return false
 }
 
-var TrafficManagerSelector = labels.SelectorFromSet(map[string]string{ //nolint:gochecknoglobals // constant
-	"app":          agentmap.ManagerAppName,
-	"telepresence": "manager",
-})
-
 func (w *watcher) Subscribe(ctx context.Context) <-chan []Event {
 	ch := make(chan []Event, 1)
 	initialEvents := make([]Event, 0, 100)
@@ -140,7 +135,7 @@ func (w *watcher) Subscribe(ctx context.Context) <-chan []Event {
 	if slices.Contains(w.enabledWorkloadKinds, DeploymentKind) {
 		if dps, err := ai.Deployments().Lister().Deployments(w.namespace).List(labels.Everything()); err == nil {
 			for _, obj := range dps {
-				if wl, ok := FromAny(obj); ok && !hasValidReplicasetOwner(wl, w.enabledWorkloadKinds) && !TrafficManagerSelector.Matches(labels.Set(obj.Labels)) {
+				if wl, ok := FromAny(obj); ok && !hasValidReplicasetOwner(wl, w.enabledWorkloadKinds) && !agentmap.TrafficManagerSelector.Matches(labels.Set(obj.Labels)) {
 					initialEvents = append(initialEvents, Event{
 						Type:     EventTypeAdd,
 						Workload: wl,
@@ -296,7 +291,7 @@ func (w *watcher) addEventHandler(ctx context.Context, ns string) error {
 
 func (w *watcher) handleEvent(we Event) {
 	// Always exclude the traffic-manager
-	if we.Workload.GetKind() == "Deployment" && TrafficManagerSelector.Matches(labels.Set(we.Workload.GetLabels())) {
+	if we.Workload.GetKind() == "Deployment" && agentmap.TrafficManagerSelector.Matches(labels.Set(we.Workload.GetLabels())) {
 		return
 	}
 	w.Lock()

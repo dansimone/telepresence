@@ -1036,10 +1036,10 @@ func (s *Session) Start(c context.Context, g *dgroup.Group) error {
 		if clusterCfg.AgentPortForward && clusterCfg.ConnectFromRootDaemon {
 			if k8sclient.CanPortForward(c, s.namespace) {
 				s.agentClients = agentpf.NewClients(s.session)
+				if err := s.activateProxyViaWorkloads(c); err != nil {
+					return err
+				}
 				g.Go("agentPods", func(ctx context.Context) error {
-					if err := s.activateProxyViaWorkloads(c); err != nil {
-						return err
-					}
 					return s.agentClients.WatchAgentPods(ctx, rmc.RealManagerClient())
 				})
 			} else {
@@ -1159,6 +1159,11 @@ func (s *Session) activateProxyViaWorkloads(ctx context.Context) error {
 			Name:    wlName,
 		})
 		if err != nil {
+			if st, ok := status.FromError(err); ok {
+				if st.Code() == codes.FailedPrecondition {
+					return errcat.User.New(st.Message())
+				}
+			}
 			return err
 		}
 	}

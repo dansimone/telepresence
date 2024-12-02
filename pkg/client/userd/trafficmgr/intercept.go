@@ -376,6 +376,11 @@ func (s *session) CanIntercept(c context.Context, ir *rpc.CreateInterceptRequest
 	}
 	pi, err := s.managerClient.PrepareIntercept(c, mgrIr)
 	if err != nil {
+		if st, ok := grpcStatus.FromError(err); ok {
+			if st.Code() == grpcCodes.FailedPrecondition {
+				return nil, InterceptError(common.InterceptError_TRAFFIC_MANAGER_ERROR, errcat.User.New(st.Message()))
+			}
+		}
 		return nil, InterceptError(common.InterceptError_TRAFFIC_MANAGER_ERROR, err)
 	}
 	if pi.Error != "" {
