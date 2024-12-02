@@ -20,7 +20,7 @@ The `--docker` flag is a global flag, and if passed directly like `telepresence 
 
 ### The docker-run flag
 
-If you want your intercept to use another Docker container, you can use the `--docker-run` flag. It creates the ingest or intercept, runs your container in the foreground, then automatically ends the intercept when the container exits.
+If you want your ingest or intercept to use another Docker container, you can use the `--docker-run` flag. It creates the ingest or intercept, runs your container in the foreground, then automatically ends the ingest or intercept when the container exits.
 
 After establishing a connection to a cluster using `telepresence connect --docker`, the container started when using `--docker-run` will share
 the same network as the containerized daemon that maintains the connection. This enables seamless communication between your local development
@@ -51,8 +51,8 @@ because that makes everything less intrusive:
 
 The following happens under the hood when both flags are in use:
 
-- The network of for the intercept handler will be set to the same as the network used by the daemon. This guarantees that the
-  intercept handler can access the Telepresence VIF, and hence have access the cluster.
+- The network of for the ingest or intercept handler will be set to the same as the network used by the daemon. This guarantees that the
+  ingest or intercept handler can access the Telepresence VIF, and hence have access the cluster.
 - Volume mounts will be automatic and made using the Telemount Docker volume plugin so that all volumes exposed by the targeted
   remote container are mounted on the local handler container.
 - The environment of the remote container becomes the environment of the local handler container.

@@ -22,7 +22,7 @@
       link: concepts/intercepts
 - title: How do I...
   items:
-    - title: Intercept a service in your own environment
+    - title: Code and debug an application locally
       link: howtos/intercepts
     - title: Proxy outbound traffic to my cluster
       link: howtos/outbound

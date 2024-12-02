@@ -16,28 +16,21 @@ Ultimately, this empowers you to develop services locally and still test integra
 
 You can “intercept” any requests made to a target Kubernetes workload, and code and debug your associated service locally using your favourite local IDE and in-process debugger. You can test your integrations by making requests against the remote cluster’s ingress and watching how the resulting internal traffic is handled by your service running locally.
 
+You can also "ingest" a target Kubernetes workload. Very similar to an intercept in that your local workstation has access to the workload's network, environment, and volumes, but no traffic will be rerouted from the cluster
+
 ** What operating systems does Telepresence work on?**
 
 Telepresence currently works natively on macOS (Intel and Apple Silicon), Linux, and Windows.
 
 ** What protocols can be intercepted by Telepresence?**
 
-Both TCP and UDP are supported for global intercepts.
+Both TCP and UDP are supported.
 
-Personal intercepts require HTTP. All HTTP/1.1 and HTTP/2 protocols can be intercepted. This includes:
+** When using Telepresence to ingest or intercept a container, are the Kubernetes cluster environment variables proxied on my local machine?**
 
-- REST
-- JSON/XML over HTTP
-- gRPC
-- GraphQL
+Yes, you can either set the container's environment variables on your machine or write the variables to a file to use with Docker or another build process. You can also directly pass the environments to an intercept handler that is run by the ingest or intercept. Please see [the environment variable reference doc](reference/environment.md) for more information.
 
-If you need another protocol supported, please [drop us a line](https://github.com/telepresenceio/telepresence/issues/new?assignees=&labels=&projects=&template=Feature_request.md) to request it.
-
-** When using Telepresence to intercept a pod, are the Kubernetes cluster environment variables proxied to my local machine?**
-
-Yes, you can either set the pod's environment variables on your machine or write the variables to a file to use with Docker or another build process. Please see [the environment variable reference doc](reference/environment.md) for more information.
-
-** When using Telepresence to intercept a pod, can the associated pod volume mounts also be mounted by my local machine?**
+** When using Telepresence to ingest or intercept a container, can the associated container volume mounts also be mounted by my local machine?**
 
 Yes, please see [the volume mounts reference doc](reference/volume.md) for more information.
 
@@ -58,11 +51,11 @@ You can connect to cloud-based data stores and services that are directly addres
 
 
 
-** Will Telepresence be able to intercept workloads running on a private cluster or cluster running within a virtual private cloud (VPC)?**
+** Will Telepresence be able to ingest and intercept workloads running on a private cluster or cluster running within a virtual private cloud (VPC)?**
 
 Yes, but it doesn't need to have a publicly accessible IP address.
 
-The cluster must also have access to an external registry in order to be able to download the traffic-manager and traffic-agent images that are deployed when connecting with Telepresence.
+The cluster must also have access to an external registry to be able to download the traffic-manager and traffic-agent images that are deployed when connecting with Telepresence.
 
 ** Why does running Telepresence require sudo access for the local daemon unless it runs in a Docker container?**
 
@@ -72,7 +65,7 @@ The local daemon needs sudo to create a VIF (Virtual Network Interface) for outb
 
 A single `traffic-manager` service is deployed in the `ambassador` namespace within your cluster, and this manages resilient intercepts and connections between your local machine and the cluster.
 
-A Traffic Agent container is injected per pod that is being intercepted. The first time a workload is intercepted all pods associated with this workload will be restarted with the Traffic Agent automatically injected.
+A Traffic Agent container is injected per pod that is being intercepted. The first time an ingest or intercept is made on a workload, all pods associated with this workload will be restarted with the Traffic Agent automatically injected.
 
 ** How can I remove all the Telepresence components installed within my cluster?**
 
@@ -82,7 +75,7 @@ Also run `telepresence quit -s` to stop all local daemons running.
 
 ** What language is Telepresence written in?**
 
-All components of the Telepresence application and cluster components are written using Go.
+All components of the Telepresence application and cluster components are written using Go. 
 
 ** How does Telepresence connect and tunnel into the Kubernetes cluster?**
 
@@ -96,8 +89,8 @@ protocol over that connection.
 
 ** Is Telepresence OSS open source?**
 
-Yes it is! You can find its source code on [GitHub](https://github.com/telepresenceio/telepresence).
+Yes it is! You'll find both source code and documentation in the [Telepresence GitHub repository](https://github.com/telepresenceio/telepresence), licensed using the [apache License Version 2.0](https://github.com/telepresenceio/telepresence?tab=License-1-ov-file#readme).
 
 ** How do I share my feedback on Telepresence?**
 
-Your feedback is always appreciated and helps us build a product that provides as much value as possible for our community. You can chat with us directly on our #telepresence-oss channel at the [CNCF Slack](https://slack.cncf.io).
+Your feedback is always appreciated and helps us build a product that provides as much value as possible for our community. You can chat with us directly on our #telepresence-oss channel at the [CNCF Slack](https://slack.cncf.io), and also report issues or create pull-requests on the GitHub repository.
