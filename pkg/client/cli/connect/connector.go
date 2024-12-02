@@ -107,7 +107,9 @@ func ExistingDaemon(ctx context.Context, info *daemon.Info) (context.Context, er
 	var conn *grpc.ClientConn
 	if info.InDocker && !proc.RunningInContainer() {
 		// The host relies on that the daemon has exposed a port to localhost
-		conn, err = docker.ConnectDaemon(ctx, fmt.Sprintf(":%d", info.DaemonPort))
+		// We must use an IP here to avoid that a IPv6 zone is picked up and incorrectly
+		// parsed by the gRPC dns resolver. See https://github.com/grpc/grpc-go/issues/7882
+		conn, err = docker.ConnectDaemon(ctx, fmt.Sprintf("127.0.0.1:%d", info.DaemonPort))
 		if err != nil {
 			return ctx, err
 		}
@@ -266,6 +268,7 @@ func launchConnectorDaemon(ctx context.Context, connectorDaemon string, required
 			args = append(args, "--embed-network")
 			args = append(args, "--name", "docker-"+hn)
 		}
+		dlog.Debugf(ctx, "Creating daemon info file %s (runs on host, or both CLI and daemon runs in container)", daemonID.Name)
 		err = daemon.SaveInfo(ctx,
 			&daemon.Info{
 				InDocker:     cliInContainer,
@@ -281,7 +284,9 @@ func launchConnectorDaemon(ctx context.Context, connectorDaemon string, required
 		}
 		defer func() {
 			if err != nil {
-				_ = daemon.DeleteInfo(ctx, daemonID.InfoFileName())
+				file := daemonID.InfoFileName()
+				dlog.Debugf(ctx, "Deleting daemon info %s due to launch error: %v", file, err)
+				_ = daemon.DeleteInfo(ctx, file)
 			}
 		}()
 
@@ -471,6 +476,7 @@ func connectSession(ctx context.Context, useLine string, userD daemon.UserClient
 
 	if !userD.Containerized() {
 		daemonID := userD.DaemonID()
+		dlog.Debugf(ctx, "Creating daemon info file %s (runs on host)", daemonID.Name)
 		err = daemon.SaveInfo(ctx,
 			&daemon.Info{
 				InDocker:     false,
@@ -486,7 +492,9 @@ func connectSession(ctx context.Context, useLine string, userD daemon.UserClient
 	}
 	if ci, err = userD.Connect(ctx, &request.ConnectRequest); err != nil {
 		if !userD.Containerized() {
-			_ = daemon.DeleteInfo(ctx, userD.DaemonID().InfoFileName())
+			file := userD.DaemonID().InfoFileName()
+			dlog.Debugf(ctx, "Deleting daemon info %s due to connect error: %v", file, err)
+			_ = daemon.DeleteInfo(ctx, file)
 		}
 		return nil, err
 	}
