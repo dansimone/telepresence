@@ -422,7 +422,11 @@ endif
 	# is only used for extensions. Therefore, we want to validate that our tests, and
 	# telepresence, run without requiring any outside dependencies.
 	set -o pipefail
+ifeq ($(EMBED_FUSEFTP),1)
+	TELEPRESENCE_MAX_LOGFILES=300 TELEPRESENCE_LOGIN_DOMAIN=127.0.0.1 CGO_ENABLED=$(CGO_ENABLED) go test -tags embed_fuseftp -failfast -json -timeout=80m ./integration_test/... | $(tools/test-report)
+else
 	TELEPRESENCE_MAX_LOGFILES=300 TELEPRESENCE_LOGIN_DOMAIN=127.0.0.1 CGO_ENABLED=$(CGO_ENABLED) go test -failfast -json -timeout=80m ./integration_test/... | $(tools/test-report)
+endif
 
 .PHONY: _login
 _login:
